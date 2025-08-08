@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GA MCP Chat - インタラクティブ分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .chat-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+        }
+
+        .config-section {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .config-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .config-row input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-auth {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-auth:hover {
+            background: #5a67d8;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 15px;
+            border-radius: 15px;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 15px;
+            border-bottom-left-radius: 5px;
+            max-width: 75%;
+            margin-bottom: 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: 0.0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-row textarea {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            resize: none;
+            font-size: 16px;
+            font-family: inherit;
+            max-height: 120px;
+            min-height: 48px;
+        }
+
+        .input-row textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .stop-btn {
+            padding: 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 48px;
+            height: 48px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            margin-left: 10px;
+        }
+
+        .stop-btn:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+
+        .stop-btn.show {
+            display: flex;
+        }
+
+        .example-questions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .session-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 GA MCP Chat</h1>
+            <p>インタラクティブなGoogle Analytics分析</p>
+        </div>
+
+        <div class="config-section">
+            <div class="config-row">
+                <label>ビューID:</label>
+                <input type="text" id="viewId" placeholder="例: G-H0NVZTZGMJ" value="G-H0NVZTZGMJ">
+                <button class="btn-auth" onclick="authenticate()">🔑 Google認証</button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div class="message-content">
+                    <p>こんにちは！Google Analytics データの分析をお手伝いします。</p>
+                    <p>どのような分析をご希望ですか？</p>
+                    <div class="message-time" id="initialTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+            <span>分析中...</span>
+        </div>
+
+        <div class="chat-input">
+            <div class="example-questions">
+                <button class="example-btn" onclick="setQuestion('今月の人気ページを教えて')">人気ページ</button>
+                <button class="example-btn" onclick="setQuestion('ユーザーの属性分析をして')">属性分析</button>
+                <button class="example-btn" onclick="setQuestion('トラフィック源を分析して')">トラフィック源</button>
+                <button class="example-btn" onclick="setQuestion('セッション数の推移は？')">セッション推移</button>
+            </div>
+            
+            <div class="input-row">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="メッセージを入力..."
+                    onkeydown="handleKeyDown(event)"
+                    rows="1"
+                ></textarea>
+                <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+                    <span>▶</span>
+                </button>
+                <button class="stop-btn" onclick="stopAnalysis()" id="stopBtn">
+                    <span>⏹</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="session-info">
+            セッションID: <span id="sessionId"></span> | 会話数: <span id="messageCount">1</span>
+        </div>
+    </div>
+
+    <script>
+        // セッション管理
+        let currentSessionId = 'session_' + Date.now();
+        let messageCount = 1;
+        let currentAbortController = null;
+        
+        document.getElementById('sessionId').textContent = currentSessionId.substring(0, 12) + '...';
+        document.getElementById('initialTime').textContent = new Date().toLocaleTimeString();
+
+        function generateSessionId() {
+            return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function setQuestion(question) {
+            document.getElementById('messageInput').value = question;
+            document.getElementById('messageInput').focus();
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function authenticate() {
+            window.open('/auth/google', '_blank', 'width=600,height=600');
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        // テキストエリアの自動リサイズ
+        document.getElementById('messageInput').addEventListener('input', function() {
+            autoResize(this);
+        });
+
+        function addMessage(role, content, timestamp = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${typeof content === 'string' ? content.replace(/\n/g, '<br>') : content}
+                    <div class="message-time">${timeStr}</div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+        }
+
+        function showTyping() {
+            document.getElementById('typingIndicator').style.display = 'flex';
+            document.getElementById('stopBtn').classList.add('show');
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTyping() {
+            document.getElementById('typingIndicator').style.display = 'none';
+            document.getElementById('stopBtn').classList.remove('show');
+        }
+
+        function stopAnalysis() {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+                hideTyping();
+                
+                const sendBtn = document.getElementById('sendBtn');
+                const messageInput = document.getElementById('messageInput');
+                sendBtn.disabled = false;
+                messageInput.focus();
+                
+                addMessage('assistant', '分析が停止されました。新しい質問をどうぞ。');
+                
+                console.log('Analysis stopped by user');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.appendChild(errorDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const viewId = document.getElementById('viewId').value.trim();
+            const message = messageInput.value.trim();
+
+            if (!message || !viewId) {
+                alert('メッセージとビューIDを入力してください');
+                return;
+            }
+
+            // ユーザーメッセージを表示
+            addMessage('user', message);
+            
+            // UI更新
+            messageInput.value = '';
+            autoResize(messageInput);
+            sendBtn.disabled = true;
+            showTyping();
+
+            try {
+                // AbortControllerを作成
+                currentAbortController = new AbortController();
+                
+                const response = await fetch(`/api/chat/${currentSessionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message, viewId }),
+                    signal: currentAbortController.signal
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // AIレスポンスを表示
+                    addMessage('assistant', result.response);
+                } else {
+                    throw new Error(result.error || '分析中にエラーが発生しました');
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Request was aborted by user');
+                    return; // 停止ボタンによる中断なので、エラーメッセージは表示しない
+                }
+                
+                console.error('Chat error:', error);
+                showError(`エラー: ${error.message}`);
+                addMessage('assistant', 'すみません、エラーが発生しました。もう一度お試しください。');
+            } finally {
+                currentAbortController = null;
+                hideTyping();
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // 履歴復元機能
+        async function loadChatHistory() {
+            try {
+                const response = await fetch(`/api/chat/${currentSessionId}/history`);
+                const result = await response.json();
+                
+                if (result.exists && result.history.length > 0) {
+                    // 既存のメッセージをクリア（初期メッセージ以外）
+                    const messagesContainer = document.getElementById('chatMessages');
+                    const children = messagesContainer.children;
+                    for (let i = children.length - 1; i > 0; i--) {
+                        messagesContainer.removeChild(children[i]);
+                    }
+                    
+                    // 履歴からメッセージを復元
+                    result.history.forEach(msg => {
+                        if (msg.role !== 'system') {
+                            addMessage(msg.role, msg.content, msg.timestamp);
+                        }
+                    });
+                    
+                    messageCount = result.history.length + 1;
+                    document.getElementById('messageCount').textContent = messageCount;
+                }
+            } catch (error) {
+                console.log('履歴の読み込みに失敗しました（新規セッション）');
+            }
+        }
+
+        // 新規セッション開始
+        function startNewSession() {
+            currentSessionId = generateSessionId();
+            document.getElementById('sessionId').textContent = currentSessionId.substring(0, 12) + '...';
+            
+            // チャット画面をリセット
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = `
+                <div class="message assistant">
+                    <div class="message-content">
+                        <p>新しいセッションを開始しました。</p>
+                        <p>Google Analytics データの分析をお手伝いします。どのような分析をご希望ですか？</p>
+                        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                </div>
+            `;
+            messageCount = 1;
+            document.getElementById('messageCount').textContent = messageCount;
+        }
+
+        // ページ読み込み時の処理
+        window.onload = function() {
+            // URLパラメータからセッションIDを取得（オプション）
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionParam = urlParams.get('session');
+            
+            if (sessionParam) {
+                currentSessionId = sessionParam;
+                document.getElementById('sessionId').textContent = currentSessionId.substring(0, 12) + '...';
+                loadChatHistory();
+            }
+            
+            document.getElementById('messageInput').focus();
+        };
+        
+        // キーボードショートカット
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                if (confirm('新しいセッションを開始しますか？現在の会話履歴は保持されます。')) {
+                    startNewSession();
+                }
+            }
+            
+            // Escキーで分析停止
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                stopAnalysis();
+            }
+        });
+    </script>
+</body>
+</html>
