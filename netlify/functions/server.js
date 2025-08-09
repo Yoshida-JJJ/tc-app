@@ -222,10 +222,10 @@ app.get('/auth/callback', async (req, res) => {
       throw new Error('No tokens received from Google');
     }
     
-    oauth2Client.setCredentials(tokenResponse.tokens);
-    global.authTokens = tokenResponse.tokens;
+    // トークンをクライアント側に送信してlocalStorageに保存
+    const tokensJSON = JSON.stringify(tokenResponse.tokens);
     
-    console.log('Authentication successful, tokens saved');
+    console.log('Authentication successful, sending tokens to client');
     
     res.send(`
       <html>
@@ -234,6 +234,14 @@ app.get('/auth/callback', async (req, res) => {
           <p>Google Analytics認証が完了しました。</p>
           <p>このウィンドウは自動的に閉じられます。</p>
           <script>
+            // 親ウィンドウにトークンを送信
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'auth_success',
+                tokens: ${tokensJSON}
+              }, '*');
+            }
+            
             setTimeout(() => {
               window.close();
             }, 2000);
@@ -250,6 +258,13 @@ app.get('/auth/callback', async (req, res) => {
           <p>エラー: ${error.message}</p>
           <p>このウィンドウは自動的に閉じられます。</p>
           <script>
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'auth_error',
+                error: '${error.message}'
+              }, '*');
+            }
+            
             setTimeout(() => {
               window.close();
             }, 3000);
@@ -263,38 +278,38 @@ app.get('/auth/callback', async (req, res) => {
 // API エンドポイント
 app.post('/api/query', async (req, res) => {
   try {
-    const { query, viewId } = req.body;
+    const { query, viewId, authTokens } = req.body;
     
     if (!query || !viewId) {
       return res.status(400).json({ error: 'クエリとビューIDが必要です' });
     }
 
+    if (!authTokens) {
+      return res.status(400).json({ error: 'Google認証が完了していません。🔑Google認証ボタンをクリックしてください。' });
+    }
+
     console.log('AI分析開始...');
     const queryAnalysis = await aiAgent.processQuery(query, viewId);
     
-    console.log('MCPデータ取得開始...');
+    console.log('GA4データ取得開始...');
     const mcpResults = {};
     
     for (const action of queryAnalysis.suggestedActions) {
       try {
-        console.log(`Calling MCP tool: ${action.tool}`, action.params);
-        
-        if (!global.authTokens) {
-          throw new Error('Google認証が完了していません。🔑Google認証ボタンをクリックしてください。');
-        }
+        console.log(`Calling GA tool: ${action.tool}`, action.params);
         
         const paramsWithAuth = {
           ...action.params,
-          authTokens: global.authTokens
+          authTokens: authTokens
         };
         
-        console.log('Auth tokens available:', !!global.authTokens);
+        console.log('Auth tokens available:', !!authTokens);
         
         const result = await mcpClient.callTool(action.tool, paramsWithAuth);
-        console.log(`MCP tool result (${action.tool}):`, JSON.stringify(result, null, 2));
+        console.log(`GA tool result (${action.tool}):`, JSON.stringify(result, null, 2));
         mcpResults[action.tool] = result;
       } catch (error) {
-        console.error(`MCP tool error (${action.tool}):`, error);
+        console.error(`GA tool error (${action.tool}):`, error);
         console.error('Error details:', error.stack);
         mcpResults[action.tool] = { error: error.message };
       }
@@ -323,10 +338,14 @@ app.post('/api/query', async (req, res) => {
 app.post('/api/chat/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { message, viewId } = req.body;
+    const { message, viewId, authTokens } = req.body;
     
     if (!message || !viewId) {
       return res.status(400).json({ error: 'メッセージとビューIDが必要です' });
+    }
+
+    if (!authTokens) {
+      return res.status(400).json({ error: 'Google認証が完了していません。🔑Google認証ボタンをクリックしてください。' });
     }
 
     const session = getOrCreateSession(sessionId);
@@ -341,27 +360,23 @@ app.post('/api/chat/:sessionId', async (req, res) => {
     console.log(`[チャット ${sessionId}] AI分析開始...`);
     const queryAnalysis = await aiAgent.processQueryWithHistory(message, viewId, session.history);
     
-    console.log(`[チャット ${sessionId}] MCPデータ取得開始...`);
+    console.log(`[チャット ${sessionId}] GA4データ取得開始...`);
     const mcpResults = {};
     
     for (const action of queryAnalysis.suggestedActions) {
       try {
-        console.log(`Calling MCP tool: ${action.tool}`, action.params);
-        
-        if (!global.authTokens) {
-          throw new Error('Google認証が完了していません。🔑Google認証ボタンをクリックしてください。');
-        }
+        console.log(`Calling GA tool: ${action.tool}`, action.params);
         
         const paramsWithAuth = {
           ...action.params,
-          authTokens: global.authTokens
+          authTokens: authTokens
         };
         
         const result = await mcpClient.callTool(action.tool, paramsWithAuth);
-        console.log(`MCP tool result (${action.tool}):`, JSON.stringify(result, null, 2));
+        console.log(`GA tool result (${action.tool}):`, JSON.stringify(result, null, 2));
         mcpResults[action.tool] = result;
       } catch (error) {
-        console.error(`MCP tool error (${action.tool}):`, error);
+        console.error(`GA tool error (${action.tool}):`, error);
         mcpResults[action.tool] = { error: error.message };
       }
     }

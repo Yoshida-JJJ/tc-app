@@ -361,9 +361,56 @@
         let currentSessionId = 'session_' + Date.now();
         let messageCount = 1;
         let currentAbortController = null;
+        let authTokens = null;
         
         document.getElementById('sessionId').textContent = currentSessionId.substring(0, 12) + '...';
         document.getElementById('initialTime').textContent = new Date().toLocaleTimeString();
+
+        // 認証トークンの管理
+        function saveAuthTokens(tokens) {
+            authTokens = tokens;
+            localStorage.setItem('ga_auth_tokens', JSON.stringify(tokens));
+            updateAuthStatus(true);
+        }
+
+        function loadAuthTokens() {
+            const stored = localStorage.getItem('ga_auth_tokens');
+            if (stored) {
+                authTokens = JSON.parse(stored);
+                updateAuthStatus(true);
+                return authTokens;
+            }
+            return null;
+        }
+
+        function clearAuthTokens() {
+            authTokens = null;
+            localStorage.removeItem('ga_auth_tokens');
+            updateAuthStatus(false);
+        }
+
+        function updateAuthStatus(isAuthenticated) {
+            const authBtn = document.querySelector('.btn-auth');
+            if (isAuthenticated) {
+                authBtn.textContent = '✅ 認証済み';
+                authBtn.style.background = '#28a745';
+            } else {
+                authBtn.textContent = '🔑 Google認証';
+                authBtn.style.background = '#667eea';
+            }
+        }
+
+        // 認証ポップアップからのメッセージを受信
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'auth_success') {
+                console.log('Authentication success received');
+                saveAuthTokens(event.data.tokens);
+                addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
+            } else if (event.data.type === 'auth_error') {
+                console.error('Authentication error:', event.data.error);
+                addMessage('assistant', `❌ 認証エラー: ${event.data.error}`);
+            }
+        });
 
         function generateSessionId() {
             return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -466,6 +513,11 @@
                 return;
             }
 
+            if (!authTokens) {
+                alert('Google認証が必要です。🔑Google認証ボタンをクリックしてください。');
+                return;
+            }
+
             // ユーザーメッセージを表示
             addMessage('user', message);
             
@@ -484,7 +536,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ message, viewId }),
+                    body: JSON.stringify({ message, viewId, authTokens }),
                     signal: currentAbortController.signal
                 });
 
@@ -565,6 +617,9 @@
 
         // ページ読み込み時の処理
         window.onload = function() {
+            // 保存された認証トークンを読み込み
+            loadAuthTokens();
+            
             // URLパラメータからセッションIDを取得（オプション）
             const urlParams = new URLSearchParams(window.location.search);
             const sessionParam = urlParams.get('session');
