@@ -185,22 +185,23 @@ class GAAnalytics {
 const mcpClient = new GAAnalytics();
 
 // Google OAuth認証用の設定
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://spectacular-caramel-1892fa.netlify.app/auth/callback';
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  REDIRECT_URI
 );
 
 // 認証エンドポイント
 app.get('/auth/google', (req, res) => {
   console.log('Auth request initiated');
-  console.log('Redirect URI:', process.env.GOOGLE_REDIRECT_URI);
+  console.log('Redirect URI:', REDIRECT_URI);
   
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/analytics.readonly'],
     prompt: 'consent',
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI // 明示的に指定
+    redirect_uri: REDIRECT_URI // 明示的に指定
   });
   
   console.log('Generated auth URL:', authUrl);
@@ -211,12 +212,13 @@ app.get('/auth/google', (req, res) => {
 app.get('/auth/debug', (req, res) => {
   res.json({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    redirect_uri_env: process.env.GOOGLE_REDIRECT_URI,
+    redirect_uri_used: REDIRECT_URI,
     netlify_url: process.env.NETLIFY_URL,
     auth_url: oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/analytics.readonly'],
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI
+      redirect_uri: REDIRECT_URI
     })
   });
 });
@@ -251,6 +253,7 @@ app.get('/auth/callback', async (req, res) => {
     const baseUrl = process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app';
     
     res.send(`
+      <!DOCTYPE html>
       <html>
         <head>
           <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; object-src 'none';">
