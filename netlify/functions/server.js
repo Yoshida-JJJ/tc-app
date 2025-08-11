@@ -193,12 +193,32 @@ const oauth2Client = new google.auth.OAuth2(
 
 // 認証エンドポイント
 app.get('/auth/google', (req, res) => {
+  console.log('Auth request initiated');
+  console.log('Redirect URI:', process.env.GOOGLE_REDIRECT_URI);
+  
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/analytics.readonly'],
-    prompt: 'consent'
+    prompt: 'consent',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI // 明示的に指定
   });
+  
+  console.log('Generated auth URL:', authUrl);
   res.redirect(authUrl);
+});
+
+// デバッグ用：認証設定確認エンドポイント
+app.get('/auth/debug', (req, res) => {
+  res.json({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    netlify_url: process.env.NETLIFY_URL,
+    auth_url: oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/analytics.readonly'],
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    })
+  });
 });
 
 app.get('/auth/callback', async (req, res) => {
