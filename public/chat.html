@@ -669,28 +669,41 @@
 
         // ページ読み込み時の処理
         window.onload = function() {
+            console.log('Page loading...');
+            
             // URLパラメータをチェック（認証完了の場合）
             const urlParams = new URLSearchParams(window.location.search);
-            const authTokensParam = urlParams.get('auth_tokens');
             const authSuccessParam = urlParams.get('auth_success');
             
-            if (authTokensParam && authSuccessParam === '1') {
-                console.log('Auth tokens found in URL parameters');
-                try {
-                    // Base64デコードしてJSONパース
-                    const tokensJSON = atob(decodeURIComponent(authTokensParam));
-                    const tokens = JSON.parse(tokensJSON);
-                    console.log('Tokens decoded from URL:', !!tokens);
+            if (authSuccessParam === '1') {
+                console.log('Auth success parameter detected');
+                
+                // localStorageから一時トークンを確認
+                setTimeout(function() {
+                    const tempTokens = localStorage.getItem('ga_auth_tokens_temp');
+                    console.log('Checking for temp tokens:', !!tempTokens);
                     
-                    saveAuthTokens(tokens);
-                    addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
-                    
-                    // URLパラメーターをクリア（セキュリティのため）
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                } catch (error) {
-                    console.error('Error processing auth tokens from URL:', error);
-                }
+                    if (tempTokens) {
+                        try {
+                            const tokens = JSON.parse(tempTokens);
+                            console.log('Processing temp tokens:', !!tokens);
+                            
+                            saveAuthTokens(tokens);
+                            localStorage.removeItem('ga_auth_tokens_temp');
+                            addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
+                            
+                            console.log('Authentication completed successfully');
+                        } catch (error) {
+                            console.error('Error processing temp tokens:', error);
+                        }
+                    } else {
+                        console.log('No temp tokens found, checking again in 1 second...');
+                        setTimeout(checkAuthenticationStatus, 1000);
+                    }
+                }, 500);
+                
+                // URLパラメーターをクリア
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
             
             // 保存された認証トークンを読み込み

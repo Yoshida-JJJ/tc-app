@@ -222,79 +222,59 @@ app.get('/auth/callback', async (req, res) => {
       throw new Error('No tokens received from Google');
     }
     
-    // トークンをクライアント側に送信（複数の方法を併用）
+    // トークンをローカルストレージに保存してシンプルなリダイレクト
     const tokensJSON = JSON.stringify(tokenResponse.tokens);
-    const tokensBase64 = Buffer.from(tokensJSON).toString('base64');
     
-    console.log('Authentication successful, sending tokens to client');
+    console.log('Authentication successful, saving tokens and redirecting');
     
-    // Method A: 直接リダイレクトでトークンを渡す（最も確実）
-    const redirectUrl = `${process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app'}/chat.html?auth_tokens=${encodeURIComponent(tokensBase64)}&auth_success=1`;
+    // 直接HTTPリダイレクトを使用（最も確実）
+    const baseUrl = process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app';
     
     res.send(`
       <html>
         <head>
           <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; object-src 'none';">
+          <meta http-equiv="refresh" content="1;url=${baseUrl}/?auth_success=1">
         </head>
         <body>
           <h2>認証成功！</h2>
           <p>Google Analytics認証が完了しました。</p>
-          <p>メインページにリダイレクトしています...</p>
+          <p>メインページに戻っています...</p>
+          <p><a href="${baseUrl}/?auth_success=1">自動で戻らない場合はこちらをクリック</a></p>
           
           <script>
             (function() {
+              console.log('Auth callback executing...');
+              
+              var tokens = ${tokensJSON};
+              console.log('Tokens received:', !!tokens);
+              
+              // localStorageに保存
               try {
-                console.log('Auth callback script starting...');
-                
-                var tokens = ${tokensJSON};
-                console.log('Tokens prepared:', !!tokens);
-                
-                // Method 1: localStorage（確実な方法）
-                try {
-                  localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
-                  console.log('Tokens saved to localStorage');
-                } catch (e) {
-                  console.error('localStorage failed:', e);
-                }
-                
-                // Method 2: postMessage（可能な場合）
-                if (window.opener && typeof window.opener.postMessage === 'function') {
-                  try {
-                    window.opener.postMessage({
-                      type: 'auth_success',
-                      tokens: tokens
-                    }, '*');
-                    console.log('Tokens sent via postMessage');
-                  } catch (e) {
-                    console.error('postMessage failed:', e);
-                  }
-                }
-                
-                // Method 3: 親ウィンドウを直接リダイレクト
-                if (window.opener) {
-                  try {
-                    window.opener.location.href = '${redirectUrl}';
-                    console.log('Parent redirected');
-                  } catch (e) {
-                    console.error('Redirect failed:', e);
-                  }
-                }
-                
-                // 自動クローズ
-                setTimeout(function() {
-                  try {
-                    window.close();
-                  } catch (e) {
-                    // 閉じられない場合は手動リダイレクト
-                    window.location.href = '${redirectUrl}';
-                  }
-                }, 2000);
-                
-              } catch (error) {
-                console.error('Auth callback error:', error);
-                // エラーでも安全な場所にリダイレクト
-                window.location.href = '${redirectUrl}';
+                localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
+                console.log('Tokens saved to localStorage successfully');
+              } catch (e) {
+                console.error('Failed to save tokens:', e);
               }
+              
+              // postMessageで通知（可能な場合）
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({
+                    type: 'auth_success',
+                    tokens: tokens
+                  }, '${baseUrl}');
+                  console.log('PostMessage sent to parent');
+                }
+              } catch (e) {
+                console.log('PostMessage failed (expected in some cases):', e);
+              }
+              
+              // すぐにリダイレクト
+              setTimeout(function() {
+                window.location.href = '${baseUrl}/?auth_success=1';
+              }, 500);
+              
             })();
           </script>
         </body>
