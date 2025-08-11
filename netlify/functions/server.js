@@ -184,8 +184,27 @@ class GAAnalytics {
 
 const mcpClient = new GAAnalytics();
 
-// Google OAuth認証用の設定
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://spectacular-caramel-1892fa.netlify.app/auth/callback';
+// Google OAuth認証用の設定（Netlify環境で強制的に正しいURLを使用）
+let REDIRECT_URI;
+if (process.env.NETLIFY || process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+  // 本番環境（Netlify/Vercel）では固定URL
+  REDIRECT_URI = 'https://spectacular-caramel-1892fa.netlify.app/auth/callback';
+} else {
+  // 開発環境
+  REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8080/auth/callback';
+}
+
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL: process.env.VERCEL,
+  NETLIFY: process.env.NETLIFY,
+  NETLIFY_DEV: process.env.NETLIFY_DEV,
+  URL: process.env.URL,
+  DEPLOY_URL: process.env.DEPLOY_URL,
+  GOOGLE_REDIRECT_URI_ENV: process.env.GOOGLE_REDIRECT_URI,
+  REDIRECT_URI_USED: REDIRECT_URI
+});
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
