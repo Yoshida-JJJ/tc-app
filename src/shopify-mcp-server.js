@@ -7,24 +7,48 @@ class ShopifyMCPServer {
     this.shopifyStore = process.env.SHOPIFY_STORE_URL;
     this.shopifyAccessToken = process.env.SHOPIFY_ACCESS_TOKEN;
     this.version = "1.0.0";
+    
+    // デバッグ情報をログ出力
+    console.log('🔧 Shopify MCP Server 初期化:');
+    console.log('  SHOPIFY_STORE_URL:', this.shopifyStore ? '✓ 設定済み' : '✗ 未設定');
+    console.log('  SHOPIFY_ACCESS_TOKEN:', this.shopifyAccessToken ? '✓ 設定済み' : '✗ 未設定');
+    
+    if (this.shopifyStore) {
+      console.log('  Store URL:', this.shopifyStore);
+    }
+    if (this.shopifyAccessToken) {
+      console.log('  Access Token (first 10 chars):', this.shopifyAccessToken.substring(0, 10) + '...');
+    }
   }
 
   formatShopifyDate(dateStr) {
+    console.log('📅 日付フォーマット処理:', dateStr);
+    
     if (!dateStr) {
-      return new Date().toISOString();
+      const now = new Date().toISOString();
+      console.log('  -> デフォルト (現在時刻):', now);
+      return now;
     }
     
     // 相対的な日付表現の処理
     if (dateStr.includes('daysAgo') || dateStr === 'today' || dateStr === 'yesterday') {
       const today = new Date();
-      if (dateStr === 'today') return today.toISOString();
+      if (dateStr === 'today') {
+        const result = today.toISOString();
+        console.log('  -> today:', result);
+        return result;
+      }
       if (dateStr === 'yesterday') {
         today.setDate(today.getDate() - 1);
-        return today.toISOString();
+        const result = today.toISOString();
+        console.log('  -> yesterday:', result);
+        return result;
       }
       const daysAgo = parseInt(dateStr.replace('daysAgo', ''));
       today.setDate(today.getDate() - daysAgo);
-      return today.toISOString();
+      const result = today.toISOString();
+      console.log(`  -> ${daysAgo} days ago:`, result);
+      return result;
     }
     
     // ISO 8601形式（YYYY-MM-DD）やその他の標準形式の処理
@@ -32,12 +56,18 @@ class ShopifyMCPServer {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) {
         console.error('Invalid date format:', dateStr);
-        return new Date().toISOString();
+        const fallback = new Date().toISOString();
+        console.log('  -> fallback:', fallback);
+        return fallback;
       }
-      return date.toISOString();
+      const result = date.toISOString();
+      console.log('  -> parsed:', result);
+      return result;
     } catch (error) {
       console.error('Error parsing date:', dateStr, error);
-      return new Date().toISOString();
+      const fallback = new Date().toISOString();
+      console.log('  -> error fallback:', fallback);
+      return fallback;
     }
   }
 
@@ -54,7 +84,7 @@ class ShopifyMCPServer {
       console.log(`📅 Shopify注文データ取得期間: ${startDateFormatted} - ${endDateFormatted}`);
       
       const response = await axios.get(
-        `https://${this.shopifyStore}/admin/api/2024-01/orders.json`,
+        `https://${this.shopifyStore}/admin/api/2024-10/orders.json`,
         {
           headers: {
             'X-Shopify-Access-Token': this.shopifyAccessToken,
@@ -64,8 +94,10 @@ class ShopifyMCPServer {
             status: 'any',
             limit: params.maxResults || 250, // より多くのデータを取得
             created_at_min: startDateFormatted,
-            created_at_max: endDateFormatted
-          }
+            created_at_max: endDateFormatted,
+            order: 'created_at desc'
+          },
+          timeout: 30000
         }
       );
 
@@ -113,7 +145,7 @@ class ShopifyMCPServer {
       }
 
       const response = await axios.get(
-        `https://${this.shopifyStore}/admin/api/2024-01/products.json`,
+        `https://${this.shopifyStore}/admin/api/2024-10/products.json`,
         {
           headers: {
             'X-Shopify-Access-Token': this.shopifyAccessToken,
@@ -121,7 +153,8 @@ class ShopifyMCPServer {
           },
           params: {
             limit: params.maxResults || 50
-          }
+          },
+          timeout: 30000
         }
       );
 
@@ -227,8 +260,14 @@ class ShopifyMCPServer {
 
   async getShopifySalesRanking(params) {
     try {
+      console.log('🛒 Shopify売上ランキング取得開始...');
+      console.log('  Store URL:', this.shopifyStore);
+      console.log('  Has Access Token:', !!this.shopifyAccessToken);
+      
       if (!this.shopifyStore || !this.shopifyAccessToken) {
         console.log('⚠️ Shopify認証情報が未設定のため、デモデータを使用します');
+        console.log('  SHOPIFY_STORE_URL:', this.shopifyStore || '未設定');
+        console.log('  SHOPIFY_ACCESS_TOKEN:', this.shopifyAccessToken ? 'あり' : '未設定');
         return this.getDemoSalesRanking(params);
       }
 
@@ -239,34 +278,84 @@ class ShopifyMCPServer {
       
       console.log(`📊 Shopify売上ランキング取得期間: ${startDateFormatted} - ${endDateFormatted}`);
       
+      // Shopify API接続テスト
+      console.log('🔗 Shopify API接続テスト中...');
+      
       // より多くの注文を取得（複数ページ対応）
       let allOrders = [];
       let page = 1;
       const limit = 250; // Shopify APIの最大値
       
       while (allOrders.length < 1000 && page <= 4) { // 最大1000件まで取得
-        const response = await axios.get(
-          `https://${this.shopifyStore}/admin/api/2024-01/orders.json`,
-          {
-            headers: {
-              'X-Shopify-Access-Token': this.shopifyAccessToken,
-              'Content-Type': 'application/json'
-            },
-            params: {
-              status: 'any',
-              limit: limit,
-              created_at_min: startDateFormatted,
-              created_at_max: endDateFormatted,
-              page: page
+        console.log(`📥 ページ${page}の注文データを取得中...`);
+        
+        try {
+          const response = await axios.get(
+            `https://${this.shopifyStore}/admin/api/2024-10/orders.json`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': this.shopifyAccessToken,
+                'Content-Type': 'application/json'
+              },
+              params: {
+                status: 'any',
+                limit: limit,
+                created_at_min: startDateFormatted,
+                created_at_max: endDateFormatted,
+                order: 'created_at desc'
+              },
+              timeout: 30000 // 30秒のタイムアウト
             }
+          );
+          
+          console.log(`✅ ページ${page}応答: ${response.status} ${response.statusText}`);
+          console.log(`📦 取得した注文数: ${response.data.orders?.length || 0}`);
+          
+          const orders = response.data.orders || [];
+          allOrders = allOrders.concat(orders);
+          
+          if (orders.length < limit) break; // 最後のページ
+          page++;
+          
+        } catch (apiError) {
+          console.error(`❌ Shopify API エラー (ページ${page}):`, apiError.message);
+          console.error('  Response status:', apiError.response?.status);
+          console.error('  Response data:', apiError.response?.data);
+          
+          if (apiError.response?.status === 401) {
+            throw new Error('Shopify認証エラー: アクセストークンが無効です');
+          } else if (apiError.response?.status === 404) {
+            throw new Error('Shopifyストアが見つかりません: ストアURLを確認してください');
+          } else if (apiError.response?.status === 429) {
+            throw new Error('Shopify APIレート制限に達しました: しばらく待ってから再試行してください');
+          } else {
+            throw new Error(`Shopify API エラー: ${apiError.message}`);
           }
-        );
-        
-        const orders = response.data.orders || [];
-        allOrders = allOrders.concat(orders);
-        
-        if (orders.length < limit) break; // 最後のページ
-        page++;
+        }
+      }
+      
+      console.log(`📊 総注文数: ${allOrders.length}件`);
+      
+      if (allOrders.length === 0) {
+        return {
+          content: [{
+            type: 'text',
+            text: `📊 売上ランキング分析結果 (${periodDisplay})
+
+⚠️ **注文データなし**
+指定期間（${periodDisplay}）に注文データが見つかりませんでした。
+
+🔍 **確認事項**:
+1. 期間設定: より広い期間で再試行してください
+2. Shopify設定: 注文データが正しく記録されているか確認
+3. API権限: 注文データへのアクセス権限があるか確認
+
+💡 **推奨アクション**:
+- 「過去6ヶ月の売上ランキング」など期間を拡張して再試行
+- Shopify管理画面で注文履歴を確認
+- API権限設定を確認`
+          }]
+        };
       }
 
       // 商品別売上集計
