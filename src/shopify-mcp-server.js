@@ -228,7 +228,8 @@ class ShopifyMCPServer {
   async getShopifySalesRanking(params) {
     try {
       if (!this.shopifyStore || !this.shopifyAccessToken) {
-        throw new Error('Shopify認証情報が設定されていません');
+        console.log('⚠️ Shopify認証情報が未設定のため、デモデータを使用します');
+        return this.getDemoSalesRanking(params);
       }
 
       // 日付パラメータの準備
@@ -451,6 +452,186 @@ ${JSON.stringify({
 4. 新商品導入は既存Aランク商品との関連性を重視`;
     
     return strategy;
+  }
+
+  getDemoSalesRanking(params) {
+    // デモ用売上データ（2025年1月～現在）
+    const demoProducts = [
+      {
+        name: "BigLuckGear プレミアムキャンプチェア",
+        category: "アウトドア",
+        quantity: 145,
+        revenue: 2175000, // ¥15,000 x 145個
+        orders: new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100]),
+        avgPrice: 15000
+      },
+      {
+        name: "BigLuckGear テント 4人用",
+        category: "アウトドア", 
+        quantity: 89,
+        revenue: 1780000, // ¥20,000 x 89個
+        orders: new Set([101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189]),
+        avgPrice: 20000
+      },
+      {
+        name: "BigLuckGear アウトドアクッカーセット",
+        category: "キッチン用品",
+        quantity: 234,
+        revenue: 1404000, // ¥6,000 x 234個
+        orders: new Set(Array.from({length: 156}, (_, i) => i + 200)),
+        avgPrice: 6000
+      },
+      {
+        name: "BigLuckGear LED ランタン",
+        category: "照明",
+        quantity: 178,
+        revenue: 1068000, // ¥6,000 x 178個
+        orders: new Set(Array.from({length: 112}, (_, i) => i + 400)),
+        avgPrice: 6000
+      },
+      {
+        name: "BigLuckGear 寝袋 -5℃対応",
+        category: "アウトドア",
+        quantity: 95,
+        revenue: 950000, // ¥10,000 x 95個
+        orders: new Set(Array.from({length: 67}, (_, i) => i + 600)),
+        avgPrice: 10000
+      },
+      {
+        name: "BigLuckGear フィッシングロッド",
+        category: "釣り具",
+        quantity: 56,
+        revenue: 840000, // ¥15,000 x 56個
+        orders: new Set(Array.from({length: 45}, (_, i) => i + 700)),
+        avgPrice: 15000
+      },
+      {
+        name: "BigLuckGear バックパック 50L",
+        category: "バッグ",
+        quantity: 123,
+        revenue: 738000, // ¥6,000 x 123個  
+        orders: new Set(Array.from({length: 89}, (_, i) => i + 800)),
+        avgPrice: 6000
+      },
+      {
+        name: "BigLuckGear 折りたたみテーブル",
+        category: "アウトドア",
+        quantity: 67,
+        revenue: 603000, // ¥9,000 x 67個
+        orders: new Set(Array.from({length: 56}, (_, i) => i + 900)),
+        avgPrice: 9000
+      },
+      {
+        name: "BigLuckGear ポータブル焚き火台",
+        category: "アウトドア",
+        quantity: 45,
+        revenue: 540000, // ¥12,000 x 45個
+        orders: new Set(Array.from({length: 38}, (_, i) => i + 1000)),
+        avgPrice: 12000
+      },
+      {
+        name: "BigLuckGear アウトドアナイフ",
+        category: "ツール",
+        quantity: 189,
+        revenue: 472500, // ¥2,500 x 189個
+        orders: new Set(Array.from({length: 134}, (_, i) => i + 1100)),
+        avgPrice: 2500
+      }
+    ];
+
+    const totalRevenue = demoProducts.reduce((sum, product) => sum + product.revenue, 0);
+    const totalOrders = 312; // 想定注文数
+    const startDate = new Date(params.startDate || '2025-01-01');
+    const endDate = new Date(params.endDate || new Date());
+    const periodDisplay = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日 - ${endDate.getFullYear()}年${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+
+    // 売上順にソート（既にソート済み）
+    const maxResults = params.maxResults || 20;
+    const sortedProducts = demoProducts.slice(0, maxResults);
+
+    // 売上ランキングのフォーマット
+    const rankingText = sortedProducts.map((product, index) => {
+      const share = ((product.revenue / totalRevenue) * 100).toFixed(1);
+      const orderCount = product.orders.size;
+      
+      return `${index + 1}位. ${product.name}
+   💰 売上: ¥${product.revenue.toLocaleString()} (シェア: ${share}%)
+   📦 販売数: ${product.quantity.toLocaleString()}個
+   💱 平均単価: ¥${product.avgPrice.toLocaleString()}
+   📋 注文回数: ${orderCount}回`;
+    }).join('\n\n');
+
+    // ABC分析
+    let cumulativeShare = 0;
+    const abcAnalysis = { A: [], B: [], C: [] };
+    
+    sortedProducts.forEach(product => {
+      const share = (product.revenue / totalRevenue) * 100;
+      cumulativeShare += share;
+      
+      if (cumulativeShare <= 80) {
+        abcAnalysis.A.push(product);
+      } else if (cumulativeShare <= 95) {
+        abcAnalysis.B.push(product);
+      } else {
+        abcAnalysis.C.push(product);
+      }
+    });
+
+    // 仕入れ戦略の提案
+    const strategy = this.generatePurchaseStrategy(abcAnalysis, sortedProducts, totalRevenue, totalOrders);
+
+    return {
+      content: [{
+        type: 'text',
+        text: `🏆 商品別売上ランキング & 仕入れ戦略 (${periodDisplay})
+⚠️ **デモデータ使用中** - 実際のShopifyデータに接続するには管理者にお問い合わせください
+
+📊 **売上サマリー**
+・総売上: ¥${totalRevenue.toLocaleString()}
+・総注文数: ${totalOrders.toLocaleString()}件
+・平均注文額: ¥${Math.round(totalRevenue / totalOrders).toLocaleString()}
+・分析商品数: ${sortedProducts.length}商品
+
+🏆 **売上ランキング TOP${maxResults}**
+
+${rankingText}
+
+📈 **ABC分析**
+・Aランク商品 (上位80%売上): ${abcAnalysis.A.length}商品
+・Bランク商品 (80-95%売上): ${abcAnalysis.B.length}商品  
+・Cランク商品 (残り5%売上): ${abcAnalysis.C.length}商品
+
+${strategy}
+
+🔧 **実データ接続について**
+現在はデモデータを使用しています。実際のShopify売上データに接続するには：
+1. Shopify Private Appの作成
+2. API認証情報の設定
+3. 環境変数の追加
+が必要です。
+
+📊 **データ詳細**
+${JSON.stringify({
+  demoMode: true,
+  period: periodDisplay,
+  totalRevenue: totalRevenue,
+  totalOrders: totalOrders,
+  analyzedProducts: sortedProducts.length,
+  abcAnalysis: {
+    A: abcAnalysis.A.length,
+    B: abcAnalysis.B.length,
+    C: abcAnalysis.C.length
+  },
+  topProducts: sortedProducts.slice(0, 5).map(p => ({
+    name: p.name,
+    revenue: p.revenue,
+    quantity: p.quantity,
+    avgPrice: p.avgPrice
+  }))
+}, null, 2)}`
+      }]
+    };
   }
 
   async handleToolCall(toolName, params) {
