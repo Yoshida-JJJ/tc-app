@@ -427,9 +427,48 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: {
       hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-      hasGoogleCredentials: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+      hasGoogleCredentials: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      hasShopifyCredentials: !!(process.env.SHOPIFY_STORE_URL && process.env.SHOPIFY_ACCESS_TOKEN)
     }
   });
+});
+
+// Shopify接続テスト
+app.get('/api/shopify/test', async (req, res) => {
+  try {
+    console.log('🧪 Shopify API接続テスト開始...');
+    
+    const result = await mcpClient.callTool('get_shopify_sales_ranking', {
+      startDate: '2025-01-01',
+      endDate: '2025-08-13',
+      maxResults: 5
+    });
+    
+    res.json({
+      success: true,
+      message: 'Shopify API接続テスト成功',
+      timestamp: new Date().toISOString(),
+      environment: {
+        SHOPIFY_STORE_URL: process.env.SHOPIFY_STORE_URL ? 'あり' : 'なし',
+        SHOPIFY_ACCESS_TOKEN: process.env.SHOPIFY_ACCESS_TOKEN ? 'あり' : 'なし'
+      },
+      testResult: result
+    });
+    
+  } catch (error) {
+    console.error('❌ Shopify API接続テストエラー:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Shopify API接続テストエラー',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      environment: {
+        SHOPIFY_STORE_URL: process.env.SHOPIFY_STORE_URL ? 'あり' : 'なし',
+        SHOPIFY_ACCESS_TOKEN: process.env.SHOPIFY_ACCESS_TOKEN ? 'あり' : 'なし'
+      }
+    });
+  }
 });
 
 // SPA用のフォールバック
@@ -444,4 +483,13 @@ app.listen(port, '0.0.0.0', () => {
   console.log(`- GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? '✓' : '✗'}`);
   console.log(`- GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? '✓' : '✗'}`);
   console.log(`- GA4_PROPERTY_ID: ${process.env.GA4_PROPERTY_ID ? '✓' : '✗'}`);
+  console.log('Shopify環境変数チェック:');
+  console.log(`- SHOPIFY_STORE_URL: ${process.env.SHOPIFY_STORE_URL ? '✓' : '✗'}`);
+  console.log(`- SHOPIFY_ACCESS_TOKEN: ${process.env.SHOPIFY_ACCESS_TOKEN ? '✓' : '✗'}`);
+  if (process.env.SHOPIFY_STORE_URL) {
+    console.log(`  Store URL: ${process.env.SHOPIFY_STORE_URL}`);
+  }
+  if (process.env.SHOPIFY_ACCESS_TOKEN) {
+    console.log(`  Access Token (first 10 chars): ${process.env.SHOPIFY_ACCESS_TOKEN.substring(0, 10)}...`);
+  }
 });
