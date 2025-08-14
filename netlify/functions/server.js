@@ -590,7 +590,7 @@ class GAAnalytics {
                   created_at_max: this.formatShopifyDate(endDate),
                   financial_status: 'paid' // 支払済みのみ
                 },
-                timeout: 10000 // 10秒タイムアウト
+                timeout: 15000 // 15秒タイムアウト（期間指定時）
               }
             );
 
@@ -1295,7 +1295,7 @@ app.post('/api/chat/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
     
-    // 28秒でタイムアウト（緊急時のフォールバック分析提供）
+    // 50秒でタイムアウト（長期間分析に対応）
     timeoutId = setTimeout(() => {
       if (!res.headersSent) {
         console.log(`[チャット ${sessionId}] 最終タイムアウト発生、フォールバック分析を提供`);
@@ -1344,7 +1344,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           message: 'フォールバック分析を提供しました'
         });
       }
-    }, 28000);
+    }, 50000);
     
     if (!message || !viewId) {
       clearTimeout(timeoutId);
@@ -1447,7 +1447,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
         console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
         const result = await Promise.race([
           callUnifiedTool(action.tool, paramsWithAuth),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 25000))
         ]);
         console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
         
