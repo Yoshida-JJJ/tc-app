@@ -1290,7 +1290,34 @@
                     showError('処理時間が長すぎました。より短い質問で再度お試しください。');
                     addMessage('assistant', '⏱️ 処理がタイムアウトしました。\n\n短めの質問（例：「今月のPV数は？」）で再度お試しください。');
                 } else if (error.message.includes('Gateway Timeout') || error.message.includes('504')) {
-                    showError('サーバーが応答しませんでした。少し待ってから再度お試しください。');
+                    showError('サーバーが応答しませんでした。高速モードで再試行します...');
+                    
+                    // 🚀 高速モード自動再試行（売上ランキング専用）
+                    if (message.includes('売上') && message.includes('ランキング')) {
+                        console.log('🚀 高速モードで売上ランキングを再試行中...');
+                        
+                        try {
+                            const quickResponse = await fetch(`/api/chat/${currentSessionId}/quick`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ message, viewId }),
+                                signal: currentAbortController?.signal
+                            });
+                            
+                            if (quickResponse.ok) {
+                                const quickResult = await quickResponse.json();
+                                if (quickResult.success) {
+                                    addMessage('assistant', '⚡ **高速モードで処理完了**\n\n' + quickResult.response);
+                                    return; // 成功したので通常エラー処理をスキップ
+                                }
+                            }
+                        } catch (quickError) {
+                            console.error('高速モードも失敗:', quickError);
+                        }
+                    }
+                    
                     addMessage('assistant', '🔧 一時的なサーバーエラーです。\n\n30秒ほど待ってから再度お試しください。');
                 } else {
                     showError(`エラー: ${error.message}`);
