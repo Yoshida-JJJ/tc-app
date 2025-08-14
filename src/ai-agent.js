@@ -34,6 +34,7 @@ class AIAgent {
 
 【真のMCP動作原理】
 ✅ 自然言語クエリを分析して最適なツールを動的選択
+✅ AI による期間の意図読み取りと適切な期間パラメータ生成
 ✅ ユーザーの意図に基づく柔軟なパラメータ生成
 ✅ 複数ツールの組み合わせによる包括的分析
 ✅ リアルタイムShopify APIデータの活用
@@ -62,6 +63,12 @@ class AIAgent {
 - 顧客分析 → get_customers, analyze_customer_segments
 - 注文詳細 → get_orders (期間・ステータス指定)
 - 統合分析 → 複数ツールの組み合わせ
+
+【動的期間解析の優先度】
+1. 明示的期間指定（「過去1年間」「今年の売上」等）
+2. 文脈からの期間推定（「トレンド分析」→3-6ヶ月）
+3. 分析目的に応じた最適期間設定
+4. デフォルト期間への智的フォールバック
 
 常にプロフェッショナルで洞察に富んだ、実行可能な提案を含む包括的な分析レポートを作成してください。`;
   }
@@ -258,6 +265,51 @@ class AIAgent {
     return defaultRange;
   }
 
+  // 動的期間解析メソッド
+  async analyzePeriodDynamically(userQuery) {
+    const periodPrompt = `ユーザーの質問から最適な分析期間を特定してください：
+
+質問: "${userQuery}"
+今日の日付: ${new Date().toISOString().split('T')[0]}
+
+【期間解析の指針】
+- 明示的な期間指定がある場合は、それに従ってください
+- 期間が不明な場合は、質問の内容から最適な期間を推定してください
+- ビジネス分析として意味のある期間を設定してください
+
+【出力例】
+- "過去1年間" → 1年前の今日から今日まで
+- "今年の売上" → 今年1月1日から今日まで
+- "先月の実績" → 先月1日から先月末日まで
+- "トレンド分析" → 過去3ヶ月または6ヶ月
+- "期間指定なし" → 分析目的に応じて適切な期間
+
+JSON形式で回答してください：
+{
+  "startDate": "YYYY-MM-DD",
+  "endDate": "YYYY-MM-DD",
+  "reasoning": "期間設定の根拠と解釈",
+  "confidence": "high/medium/low"
+}`;
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 300,
+        temperature: 0.1,
+        messages: [{ role: "user", content: periodPrompt }]
+      });
+
+      const analysis = JSON.parse(response.content[0].text);
+      console.log('🎯 動的期間解析結果:', analysis);
+      return analysis;
+      
+    } catch (error) {
+      console.error('❌ 動的期間解析エラー:', error);
+      throw error;
+    }
+  }
+
   // 新しい動的ツール選択メソッド
   async selectToolsDynamically(userQuery) {
     console.log('🧠 動的ツール選択開始:', userQuery);
@@ -272,22 +324,39 @@ class AIAgent {
       const availableTools = this.trueMCPServer.getAvailableTools();
       console.log('🛠️ 利用可能ツール:', availableTools.map(t => t.name));
     
-      const toolSelectionPrompt = `以下のユーザー質問に最適なShopify分析ツールを選択してください：
+      const toolSelectionPrompt = `あなたは経験豊富なShopifyデータアナリストです。以下のユーザー質問に最適なShopify分析ツールを選択し、適切な期間パラメータを動的に生成してください：
 
 質問: "${userQuery}"
+
+今日の日付: ${new Date().toISOString().split('T')[0]}
 
 利用可能なツール:
 ${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
-複合的な質問の場合は複数のツールを選択してください。
-最適なツールを1-3個選択し、必要なパラメータを生成してください。
-JSON形式で回答：
+【重要な指示】
+1. ユーザーの質問から期間の意図を読み取り、適切なstartDateとendDateを生成してください
+2. 期間が明示されていない場合は、分析の目的に応じた適切な期間を推定してください
+3. 複合的な質問の場合は複数のツールを選択してください
+4. 各ツールに必要なパラメータを具体的に指定してください
+
+【期間解析の例】
+- "過去1年間" → startDate: 1年前の今日, endDate: 今日
+- "今年の売上" → startDate: 今年1月1日, endDate: 今日
+- "先月の実績" → startDate: 先月1日, endDate: 先月末日
+- "期間指定なし" → 分析目的に応じて適切な期間を推定
+
+JSON形式で回答してください：
 {
   "selectedTools": [
     {
       "name": "ツール名",
-      "params": { "必要なパラメータ": "値" },
-      "reason": "選択理由"
+      "params": {
+        "startDate": "YYYY-MM-DD",
+        "endDate": "YYYY-MM-DD",
+        "その他のパラメータ": "値"
+      },
+      "reason": "選択理由と期間設定の根拠",
+      "periodAnalysis": "期間解析の詳細"
     }
   ]
 }`;
@@ -313,8 +382,64 @@ JSON形式で回答：
     }
   }
 
-  // フォールバック用のシンプルな選択ロジック
-  fallbackToolSelection(userQuery) {
+  // フォールバック用の動的選択ロジック
+  async fallbackToolSelection(userQuery) {
+    const queryLower = userQuery.toLowerCase();
+    
+    console.log('📋 フォールバック動的選択ロジック実行中:', queryLower);
+    
+    // AIを使った期間とツールの動的解析
+    try {
+      const fallbackPrompt = `ユーザーの質問から最適な分析期間とShopifyツールを推定してください：
+
+質問: "${userQuery}"
+今日の日付: ${new Date().toISOString().split('T')[0]}
+
+以下から最適なツールと期間を選択してください：
+- analyze_sales: 売上分析
+- analyze_inventory: 在庫分析  
+- get_orders: 注文データ取得
+- get_products: 商品データ取得
+
+JSON形式で回答：
+{
+  "recommendedTool": "ツール名",
+  "startDate": "YYYY-MM-DD",
+  "endDate": "YYYY-MM-DD", 
+  "params": {"追加パラメータ": "値"},
+  "reasoning": "選択理由と期間設定の根拠"
+}`;
+
+      const response = await this.anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 500,
+        temperature: 0.1,
+        messages: [{ role: "user", content: fallbackPrompt }]
+      });
+
+      const analysis = JSON.parse(response.content[0].text);
+      console.log('🎯 動的フォールバック分析結果:', analysis);
+      
+      return [{
+        name: analysis.recommendedTool,
+        params: {
+          startDate: analysis.startDate,
+          endDate: analysis.endDate,
+          ...analysis.params
+        },
+        reason: analysis.reasoning,
+        fallback: true
+      }];
+      
+    } catch (error) {
+      console.error('❌ 動的フォールバック失敗、静的ロジックにフォールバック:', error);
+      // 最終フォールバック: 静的ロジック
+      return this.staticFallbackSelection(userQuery);
+    }
+  }
+  
+  // 最終フォールバック用の静的選択ロジック
+  staticFallbackSelection(userQuery) {
     const queryLower = userQuery.toLowerCase();
     const dateRange = this.extractDateRange(userQuery);
     const formatDate = (date) => {
@@ -327,7 +452,7 @@ JSON形式で回答：
     const startDate = formatDate(dateRange.start);
     const endDate = formatDate(dateRange.end);
     
-    console.log('📋 フォールバック選択ロジック実行中:', queryLower);
+    console.log('📋 静的フォールバック選択ロジック実行中:', queryLower);
     
     // 複合クエリ：販売実績と在庫状況の戦略分析
     if ((queryLower.includes('販売') || queryLower.includes('売上')) && 
@@ -395,12 +520,22 @@ JSON形式で回答：
       return `${year}-${month}-${day}`;
     };
     
-    // ユーザークエリから期間を動的に解析
-    const dateRange = this.extractDateRange(userQuery);
-    const startDate = formatDate(dateRange.start);
-    const endDate = formatDate(dateRange.end);
+    // 動的期間解析を優先、フォールバックとして静的解析を使用
+    let startDate, endDate;
     
-    console.log('📅 解析された期間:', { startDate, endDate, original: userQuery });
+    try {
+      console.log('🤖 動的期間解析を試行中...');
+      const periodAnalysis = await this.analyzePeriodDynamically(userQuery);
+      startDate = periodAnalysis.startDate;
+      endDate = periodAnalysis.endDate;
+      console.log('📅 動的期間解析成功:', { startDate, endDate, reasoning: periodAnalysis.reasoning });
+    } catch (error) {
+      console.warn('⚠️ 動的期間解析失敗、静的解析にフォールバック:', error.message);
+      const dateRange = this.extractDateRange(userQuery);
+      startDate = formatDate(dateRange.start);
+      endDate = formatDate(dateRange.end);
+      console.log('📅 静的期間解析使用:', { startDate, endDate, original: userQuery });
+    }
     
     // ユーザーの質問からキーワードマッチング（強制デバッグ付き）
     const queryText = userQuery.toLowerCase();
