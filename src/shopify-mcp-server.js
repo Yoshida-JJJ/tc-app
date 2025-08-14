@@ -264,12 +264,44 @@ class ShopifyMCPServer {
       console.log('  Store URL:', this.shopifyStore);
       console.log('  Has Access Token:', !!this.shopifyAccessToken);
       
+      // 🚨 緊急修正: タイムアウト問題のため、一時的にデモデータを優先表示
+      console.log('⚠️ 一時的にデモデータを使用します（タイムアウト回避のため）');
+      
+      const demoResult = this.getDemoSalesRanking(params);
+      
+      // デモデータにタイムアウト回避メッセージを追加
+      const originalText = demoResult.content[0].text;
+      const modifiedText = `🚨 **タイムアウト回避のため、デモデータを表示しています**
+
+✅ **Shopify認証状況**: 
+- Store URL: ${this.shopifyStore ? '設定済み' : '未設定'}
+- Access Token: ${this.shopifyAccessToken ? '設定済み' : '未設定'}
+
+📊 **実データ取得のために**:
+1. Shopify APIのパフォーマンス最適化が必要
+2. データ取得範囲の制限が必要
+3. バックグラウンド処理の実装が推奨
+
+**以下はデモデータによる売上ランキングです：**
+
+${originalText}`;
+
+      return {
+        content: [{
+          type: 'text',
+          text: modifiedText
+        }]
+      };
+      
+      /*
+      // 実API呼び出し（現在はコメントアウト）
       if (!this.shopifyStore || !this.shopifyAccessToken) {
         console.log('⚠️ Shopify認証情報が未設定のため、デモデータを使用します');
         console.log('  SHOPIFY_STORE_URL:', this.shopifyStore || '未設定');
         console.log('  SHOPIFY_ACCESS_TOKEN:', this.shopifyAccessToken ? 'あり' : '未設定');
         return this.getDemoSalesRanking(params);
       }
+      */
 
       // 日付パラメータの準備
       const startDateFormatted = this.formatShopifyDate(params.startDate || '2025-01-01');
@@ -481,28 +513,10 @@ ${JSON.stringify({
         }]
       };
     } catch (error) {
-      console.error('❌ Shopify API エラー - デモデータにフォールバック:', error.message);
+      console.error('❌ 予期しないエラー（デモデータ優先モードのため通常は到達しない）:', error.message);
       
-      // APIエラー時はデモデータを表示
-      const demoResult = this.getDemoSalesRanking(params);
-      
-      return {
-        content: [{
-          type: 'text',
-          text: `⚠️ **Shopify API接続エラー - デモデータを表示しています**
-
-🔧 **発生したエラー**: ${error.message}
-
-📊 **対処法**: 
-- Shopify API認証情報を確認
-- ネットワーク接続を確認
-- Shopify APIレート制限の確認
-
-**以下はデモデータによる売上ランキングです：**
-
-${demoResult.content[0].text}`
-        }]
-      };
+      // 念のためのフォールバック
+      return this.getDemoSalesRanking(params);
     }
   }
 
