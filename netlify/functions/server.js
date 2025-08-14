@@ -1370,7 +1370,7 @@ app.post('/api/chat/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
     
-    // 180秒でタイムアウト（最大限詳細分析に対応）
+    // 300秒（5分）でタイムアウト（高速モード回避のため延長）
     timeoutId = setTimeout(() => {
       if (!res.headersSent) {
         console.log(`[チャット ${sessionId}] 最終タイムアウト発生、フォールバック分析を提供`);
@@ -1424,7 +1424,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           message: 'フォールバック分析を提供しました'
         });
       }
-    }, 180000);
+    }, 300000);
     
     if (!message || !viewId) {
       clearTimeout(timeoutId);
@@ -1527,10 +1527,10 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       const mcpPromises = suggestedActions.map(async (action) => {
         // 全ツール統一タイムアウト設定
         const getToolTimeout = (toolName) => {
-          return 180000; // 全ツール180秒統一
+          return 300000; // 全ツール300秒（5分）統一
         };
         
-        // 180秒統一タイムアウトで処理
+        // 300秒統一タイムアウトで処理
         
         try {
           console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`, action.params);
@@ -1606,7 +1606,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
           const result = await Promise.race([
             callUnifiedTool(action.tool, paramsWithAuth),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 180000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 300000))
           ]);
           console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
           
@@ -1643,7 +1643,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       if (aiAgent && typeof aiAgent.generateReportWithHistory === 'function') {
         report = await Promise.race([
           aiAgent.generateReportWithHistory(message, mcpResults, '', session.history),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 180000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 300000))
         ]);
       } else {
         throw new Error('AIエージェントが利用できません');
@@ -1994,9 +1994,9 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
         };
       }
       
-      // デフォルト: 過去30日
+      // デフォルト: 過去90日（高速モードでも十分な期間を確保）
       return {
-        start: new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)),
+        start: new Date(today.getTime() - (90 * 24 * 60 * 60 * 1000)),
         end: today
       };
     };
