@@ -575,6 +575,18 @@ class GAAnalytics {
             console.log(`Store: ${this.shopifyStore}`);
             console.log(`Date range: ${startDate} - ${endDate}`);
 
+            // 期間の長さに応じて取得制限を調整
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            const daysDiff = Math.floor((endDateObj - startDateObj) / (1000 * 60 * 60 * 24));
+            console.log(`期間: ${daysDiff}日間`);
+            
+            // 長期間の場合は段階的取得または制限
+            const limit = daysDiff > 365 ? 100 : daysDiff > 180 ? 200 : 250;
+            const timeout = daysDiff > 180 ? 20000 : 15000;
+            
+            console.log(`取得制限: ${limit}件, タイムアウト: ${timeout}ms`);
+
             // 1. 注文データを取得
             const ordersResponse = await axios.get(
               `https://${this.shopifyStore}/admin/api/2024-01/orders.json`,
@@ -585,12 +597,12 @@ class GAAnalytics {
                 },
                 params: {
                   status: 'any',
-                  limit: 250, // 最大限取得
+                  limit: limit,
                   created_at_min: this.formatShopifyDate(startDate),
                   created_at_max: this.formatShopifyDate(endDate),
                   financial_status: 'paid' // 支払済みのみ
                 },
-                timeout: 15000 // 15秒タイムアウト（期間指定時）
+                timeout: timeout
               }
             );
 
@@ -1764,6 +1776,40 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
     const { sessionId } = req.params;
     const { message, viewId } = req.body;
     
+    // メッセージから期間を解析
+    const extractDateRange = (query) => {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const queryLower = query.toLowerCase();
+      
+      // 「今年の1月から」パターン
+      if (queryLower.includes('今年') && (queryLower.includes('1月') || queryLower.includes('１月'))) {
+        return {
+          start: new Date(currentYear, 0, 1), // 今年の1月1日
+          end: today
+        };
+      }
+      
+      // 「今年」パターン
+      if (queryLower.includes('今年')) {
+        return {
+          start: new Date(currentYear, 0, 1),
+          end: today
+        };
+      }
+      
+      // デフォルト: 過去30日
+      return {
+        start: new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)),
+        end: today
+      };
+    };
+    
+    const dateRange = extractDateRange(message);
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const startDate = formatDate(dateRange.start);
+    const endDate = formatDate(dateRange.end);
+    
     console.log(`[Quick Chat ${sessionId}] 超高速処理開始`);
     
     // セッション管理
@@ -1788,10 +1834,11 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
         }
 
         console.log('⚡ 高速Shopify API呼び出し開始');
+        console.log(`期間: ${startDate} ～ ${endDate}`);
         
-        // 軽量化：最新30日分のみ、少数の注文で高速処理
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        // 期間に応じた制限調整
+        const daysDiff = Math.floor((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24));
+        const limit = daysDiff > 180 ? 100 : 50; // 長期間は制限を緩和
         
         const quickOrdersResponse = await axios.get(
           `https://${shopifyStore}/admin/api/2024-01/orders.json`,
@@ -1802,24 +1849,25 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
             },
             params: {
               status: 'any',
-              limit: 50, // 高速処理のため制限
-              created_at_min: thirtyDaysAgo.toISOString(),
+              limit: limit,
+              created_at_min: dateRange.start.toISOString(),
+              created_at_max: dateRange.end.toISOString(),
               financial_status: 'paid'
             },
-            timeout: 5000 // 5秒タイムアウト
+            timeout: 8000 // 8秒タイムアウト（期間指定対応）
           }
         );
 
         const orders = quickOrdersResponse.data.orders || [];
         
         if (orders.length === 0) {
-          return `⚡ **高速Shopify分析** (過去30日)
+          return `⚡ **高速Shopify分析** (${startDate} ～ ${endDate})
 
-⚠️ **データ状況**: 過去30日間に売上データが見つかりませんでした。
+⚠️ **データ状況**: 指定期間に売上データが見つかりませんでした。
 
 🔧 **確認事項**:
 ・Shopifyストア: ${shopifyStore}
-・期間: 過去30日間（${thirtyDaysAgo.toLocaleDateString()}〜）
+・期間: ${startDate} ～ ${endDate} (${daysDiff}日間)
 ・条件: 支払済み注文
 
 💡 **対応策**: Shopify管理画面で注文データを確認してください。`;
@@ -1858,9 +1906,9 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
 
         const avgOrder = orders.length > 0 ? Math.round(totalSales / orders.length) : 0;
 
-        return `⚡ **高速Shopify売上分析** (過去30日)
+        return `⚡ **高速Shopify売上分析** (${startDate} ～ ${endDate})
 
-✅ **実データ分析** - ${orders.length}注文を高速処理
+✅ **実データ分析** - ${orders.length}注文を高速処理 (${daysDiff}日間)
 
 💰 **売上サマリー**
 ・総売上: ¥${Math.round(totalSales).toLocaleString()}
