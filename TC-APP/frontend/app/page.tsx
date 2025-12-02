@@ -67,7 +67,7 @@ export default function Home() {
         if (selectedTeam) params.append('team', selectedTeam);
         if (sortOrder) params.append('sort', sortOrder);
 
-        const response = await fetch(`http://localhost:8000/market/listings?${params.toString()}`);
+        const response = await fetch(`/api/proxy/market/listings?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch listings');
         }
