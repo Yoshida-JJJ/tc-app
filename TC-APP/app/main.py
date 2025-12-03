@@ -7,19 +7,6 @@ import uuid
 import shutil
 import os
 import cloudinary
-import cloudinary.uploader
-from dotenv import load_dotenv
-from . import models, schemas, database, utils
-
-load_dotenv()
-
-# DBテーブル作成
-models.Base.metadata.create_all(bind=database.engine)
-
-app = FastAPI(
-    title="Baseball Card Trading Platform API",
-    version="1.0.0"
-)
 
 app.add_middleware(
     CORSMiddleware,
