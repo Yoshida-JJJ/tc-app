@@ -23,7 +23,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://tc-app2.vercel.app",
+        "https://tc-app-git-main-yoshida-jjjs-projects.vercel.app", # Vercel preview URLs
+        "*" # Keep wildcard for now as fallback, but specific origins are better
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
