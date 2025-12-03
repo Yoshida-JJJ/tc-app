@@ -1,18 +1,5 @@
 from fastapi import FastAPI, Depends, Query, HTTPException, Path, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
-from typing import List, Optional
-import uuid
-import shutil
-import os
-import cloudinary
-
-from . import models, schemas, database, utils
-
-load_dotenv()
-
-app = FastAPI(
     title="Baseball Card Trading Platform API",
     version="1.0.0"
 )
