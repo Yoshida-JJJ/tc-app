@@ -200,6 +200,30 @@ async def upload_file(file: UploadFile = File(...)):
         print(f"Cloudinary upload failed: {e}. Falling back to local storage.")
         os.makedirs("app/static/uploads", exist_ok=True)
         file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = f"app/static/uploads/{unique_filename}"
+        
+        # Reset file pointer
+        await file.seek(0)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {"url": f"http://127.0.0.1:8000/static/uploads/{unique_filename}"}
+
+@app.get("/market/orders", response_model=List[schemas.OrderResponse])
+def get_market_orders(
+    buyer_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Order)
+    if buyer_id:
+        query = query.filter(models.Order.buyer_id == buyer_id)
+    
+    orders = query.all()
+    response = []
+    for order in orders:
+        listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
         status = listing.status if listing else "Unknown"
         response.append(schemas.OrderResponse(
             id=order.id,
@@ -359,6 +383,14 @@ def complete_order(order_id: str, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.Delivered:
+         raise HTTPException(status_code=400, detail="Invalid status for completion")
+
+    listing.status = models.ListingStatus.Completed
+    db.commit()
+    return schemas.OrderResponse(
         id=order.id,
         listing_id=listing.id,
         buyer_id=order.buyer_id,
