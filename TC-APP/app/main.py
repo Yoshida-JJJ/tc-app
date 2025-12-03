@@ -206,26 +206,6 @@ async def upload_file(file: UploadFile = File(...)):
         # Reset file pointer
         await file.seek(0)
         
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        return {"url": f"http://127.0.0.1:8000/static/uploads/{unique_filename}"}
-
-# --- Debug Endpoints ---
-@app.get("/debug/seed", include_in_schema=False)
-def seed_data(db: Session = Depends(get_db)):
-    # Import here to avoid circular imports if any
-    from seed_db import seed_db
-    try:
-        seed_db()
-        return {"message": "Database seeded successfully!"}
-    except Exception as e:
-        return {"message": f"Seeding failed: {str(e)}"}
-
-@app.get("/market/orders", response_model=List[schemas.OrderResponse])
-def get_market_orders(
-    buyer_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
 ):
     query = db.query(models.Order)
     if buyer_id:
