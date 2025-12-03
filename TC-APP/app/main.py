@@ -48,41 +48,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # --- Dependency ---
 def get_db():
     db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# --- Catalog Endpoints ---
-@app.get("/catalog/cards", response_model=List[schemas.CardCatalog])
-def get_catalog_cards(
-        query = query.filter(models.ListingItem.catalog_id == catalog_id)
-
-    if seller_id:
-        query = query.filter(models.ListingItem.seller_id == seller_id)
-
-    if team:
-        query = query.filter(models.CardCatalog.team == team)
-        
-    if q:
-        search = f"%{q}%"
-        query = query.filter(
-            (models.CardCatalog.player_name.ilike(search)) |
-            (models.CardCatalog.series_name.ilike(search))
-        )
-        
-    if sort == "price_asc":
-        query = query.order_by(models.ListingItem.price.asc())
-    elif sort == "price_desc":
-        query = query.order_by(models.ListingItem.price.desc())
-    else:
-        query = query.order_by(models.ListingItem.id.desc())
-        
-    return query.all()
-
-@app.get("/market/listings/{listing_id}", response_model=schemas.ListingItemResponse)
-def get_listing(listing_id: str, db: Session = Depends(get_db)):
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     return listing
