@@ -456,39 +456,6 @@ def seed_data(db: Session = Depends(get_db)):
 
 @app.get("/debug/validate_listings")
 def debug_validate_listings(db: Session = Depends(get_db)):
-    try:
-        items = db.query(models.ListingItem).join(models.CardCatalog).all()
-        results = []
-        for item in items:
-            try:
-                # Manually validate against schema
-        buyer_id = order_data.buyer_id if order_data.buyer_id else str(uuid.uuid4())
-        
-        # 注文レコード作成
-        new_order = models.Order(
-            listing_id=str(listing.id),
-            buyer_id=buyer_id, 
-            payment_method_id=order_data.payment_method_id,
-            total_amount=listing.price
-        )
-        
-        db.add(new_order)
-        db.commit()
-        db.refresh(new_order)
-        
-        return schemas.OrderResponse(
-            id=new_order.id,
-            listing_id=listing.id,
-            buyer_id=new_order.buyer_id,
-            status=listing.status,
-            total_amount=new_order.total_amount,
-            tracking_number=new_order.tracking_number
-        )
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
 # --- Transaction Flow Endpoints ---
 
 @app.post("/market/orders/{order_id}/capture", response_model=schemas.OrderResponse)
