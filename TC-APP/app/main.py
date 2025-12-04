@@ -347,11 +347,11 @@ def ship_order(
 ):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.AwaitingShipment:
-         raise HTTPException(status_code=400, detail="Invalid status for shipping")
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return listing
+
+@app.post("/market/listings", response_model=schemas.ListingItemResponse, status_code=201)
 def create_listing(
     item: schemas.ListingItemCreate,
     db: Session = Depends(get_db)
@@ -547,7 +547,6 @@ def ship_order(
     listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
     if listing.status != models.ListingStatus.AwaitingShipment:
          raise HTTPException(status_code=400, detail="Invalid status for shipping")
-
     listing.status = models.ListingStatus.Shipped
     order.tracking_number = shipment.tracking_number
     db.commit()
