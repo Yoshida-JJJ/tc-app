@@ -360,36 +360,37 @@ def ship_order(
         id=order.id,
         listing_id=listing.id,
         buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
+```python
 
-@app.post("/market/orders/{order_id}/deliver", response_model=schemas.OrderResponse)
-def deliver_order(order_id: str, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    try:
-        # Test connection
-        db.execute(text("SELECT 1"))
-        
-        # Check tables (PostgreSQL specific query, fallback for SQLite if needed)
-        try:
-            tables = db.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")).fetchall()
-            table_names = [t[0] for t in tables]
-        except:
-            # Fallback for SQLite
-            tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
-            table_names = [t[0] for t in tables]
-        
-        # Check row counts
-        counts = {}
-        if "card_catalogs" in table_names:
-            counts["card_catalogs"] = db.query(models.CardCatalog).count()
-        if "listing_items" in table_names:
-            counts["listing_items"] = db.query(models.ListingItem).count()
-            
+    seller_id = item.seller_id if item.seller_id else str(uuid.uuid4())
+
+    new_listing = models.ListingItem(
+        catalog_id=str(item.catalog_id),
+        seller_id=seller_id, 
+        price=item.price,
+        status=models.ListingStatus.Draft, # Default to Draft
+        images=item.images,
+        condition_grading=item.condition_grading.model_dump()
+    )
+    db.add(new_listing)
+    db.commit()
+    db.refresh(new_listing)
+    return new_listing
+
+@app.post("/market/listings/{listing_id}/publish", response_model=schemas.ListingItemResponse)
+def publish_listing(
+    listing_id: str,
+    db: Session = Depends(get_db)
+):
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if listing.status != models.ListingStatus.Draft:
+        raise HTTPException(status_code=400, detail="Listing is not in Draft status")
+    
+    listing.status = models.ListingStatus.Active
+    db.commit()
+    db.refresh(listing)
     return listing
 
 @app.post("/upload")
@@ -412,7 +413,7 @@ async def upload_file(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        return {"url": f"http://127.0.0.1:8000/static/uploads/{unique_filename}"}
+        return {"url": f"http://127.00.0.1:8000/static/uploads/{unique_filename}"}
 
 @app.get("/market/orders", response_model=List[schemas.OrderResponse])
 def get_market_orders(
@@ -759,3 +760,4 @@ def debug_migrate_enums(db: Session = Depends(get_db)):
             messages.append(f"Failed to add '{value}' to '{enum_type}': {str(e)}")
             
     return {"messages": messages}
+```
