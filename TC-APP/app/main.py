@@ -439,38 +439,6 @@ def debug_db(db: Session = Depends(get_db)):
         }
     except Exception as e:
         return {
-            "status": "error",
-            "detail": str(e),
-            "type": type(e).__name__
-        }
-
-@app.get("/debug/seed", include_in_schema=False)
-def seed_data(db: Session = Depends(get_db)):
-    # Import here to avoid circular imports if any
-    from seed_db import seed_db
-    try:
-        seed_db()
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.TransactionPending:
-         raise HTTPException(status_code=400, detail="Invalid status for capture")
-
-    listing.status = models.ListingStatus.AwaitingShipment
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
-
-@app.post("/market/orders/{order_id}/fail", response_model=schemas.OrderResponse)
-def fail_order(order_id: str, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
     listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
