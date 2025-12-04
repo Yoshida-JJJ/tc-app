@@ -39,7 +39,23 @@ module.exports = {
                 spotlight: {
                     "0%": { opacity: "0.5", transform: "scale(1)" },
                     "100%": { opacity: "1", transform: "scale(1.1)" },
-                }
+                },
+                shimmer: {
+                    "0%": { backgroundPosition: "-200% 0" },
+                    "100%": { backgroundPosition: "200% 0" },
+                },
+                "rotate-slow": {
+                    "0%": { transform: "rotate(0deg)" },
+                    "100%": { transform: "rotate(360deg)" },
+                },
+            },
+            animation: {
+                "fade-in-up": "fadeInUp 0.5s ease-out forwards",
+                "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                "float": "float 6s ease-in-out infinite",
+                "spotlight": "spotlight 2s ease-in-out infinite alternate",
+                "shimmer": "shimmer 3s linear infinite",
+                "rotate-slow": "rotate-slow 10s linear infinite",
             },
         },
     },

@@ -39,6 +39,9 @@ export default function HeroSection() {
             {/* Floating Card Display */}
             <div className="relative z-10 mb-12 animate-float">
                 <div className="relative w-64 h-96 md:w-80 md:h-[500px] rounded-2xl p-2 bg-gradient-to-b from-brand-platinum/20 to-brand-dark-light/80 backdrop-blur-md border border-brand-platinum/30 shadow-[0_0_50px_rgba(59,130,246,0.3)]">
+                    {/* Spotlight Beam */}
+                    <div className="absolute -top-[150%] left-1/2 -translate-x-1/2 w-[100px] h-[500px] bg-gradient-to-b from-white/20 via-brand-gold/10 to-transparent blur-xl rotate-[15deg] transform-origin-top animate-pulse-slow pointer-events-none z-20"></div>
+
                     {/* Inner Card Frame */}
                     <div className="w-full h-full rounded-xl overflow-hidden relative border border-brand-blue/30 bg-brand-dark-light group cursor-pointer">
                         {featuredCard ? (
@@ -58,6 +61,9 @@ export default function HeroSection() {
                                 {/* Holo Effect Overlay */}
                                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-50 group-hover:opacity-70 transition-opacity"></div>
 
+                                {/* Shimmer Effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 animate-shimmer pointer-events-none"></div>
+
                                 {/* Card Details Overlay */}
                                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                                     <div className="flex justify-between items-end">
@@ -73,7 +79,7 @@ export default function HeroSection() {
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-brand-blue-glow text-lg font-bold">
+                                            <p className="text-brand-gold text-gold-glow text-lg font-bold">
                                                 ¥{featuredCard.price.toLocaleString()}
                                             </p>
                                             {featuredCard.condition_grading?.is_graded && (
@@ -99,6 +105,8 @@ export default function HeroSection() {
                     {/* Outer Glow Ring */}
                     <div className="absolute -inset-4 border border-brand-blue/20 rounded-3xl -z-10 animate-pulse-slow"></div>
                     <div className="absolute -inset-1 bg-gradient-to-b from-brand-gold/20 to-transparent rounded-2xl -z-10 blur-md"></div>
+                    {/* Rotating Glow */}
+                    <div className="absolute -inset-[100%] bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,215,0,0.1)_90deg,transparent_180deg)] rounded-full animate-rotate-slow -z-20 opacity-50 blur-2xl"></div>
                 </div>
             </div>
 
