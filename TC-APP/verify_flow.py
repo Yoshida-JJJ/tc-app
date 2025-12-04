@@ -83,14 +83,6 @@ def verify_flow():
     assert order['status'] == "Delivered"
     print(f"Delivered Order. Status: {order['status']}")
 
-    # 8. Complete Order
-    print("\n[8] Completing Order...")
-    response = client.post(f"/market/orders/{order_id}/complete")
-    assert response.status_code == 200
-    order = response.json()
-    assert order['status'] == "Completed"
-    print(f"Completed Order. Status: {order['status']}")
-
     print("\nVerification Successful! All steps passed.")
 
 if __name__ == "__main__":

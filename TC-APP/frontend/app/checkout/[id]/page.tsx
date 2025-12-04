@@ -139,31 +139,31 @@ export default function CheckoutPage() {
     if (!listing) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+                <h1 className="text-3xl font-heading font-bold text-white mb-8">Checkout</h1>
 
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-                    <div className="px-4 py-5 sm:px-6">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Order Summary</h3>
+                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl mb-6">
+                    <div className="px-6 py-5 border-b border-brand-platinum/10">
+                        <h3 className="text-lg leading-6 font-medium text-white">Order Summary</h3>
                     </div>
-                    <div className="border-t border-gray-200">
+                    <div className="border-t border-brand-platinum/10">
                         <dl>
-                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                <dt className="text-sm font-medium text-gray-500">Item</dt>
-                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            <div className="bg-brand-dark-light/30 px-6 py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                                <dt className="text-sm font-medium text-brand-platinum">Item</dt>
+                                <dd className="mt-1 text-sm text-white sm:mt-0 sm:col-span-2">
                                     {listing.catalog.player_name} ({listing.catalog.year} {listing.catalog.manufacturer})
                                 </dd>
                             </div>
-                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                <dt className="text-sm font-medium text-gray-500">Condition</dt>
-                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            <div className="bg-transparent px-6 py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                                <dt className="text-sm font-medium text-brand-platinum">Condition</dt>
+                                <dd className="mt-1 text-sm text-white sm:mt-0 sm:col-span-2">
                                     {listing.condition_grading.is_graded ? `Graded: ${listing.condition_grading.service} ${listing.condition_grading.score}` : 'Ungraded'}
                                 </dd>
                             </div>
-                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                <dt className="text-sm font-medium text-gray-500">Total Amount</dt>
-                                <dd className="mt-1 text-xl font-bold text-gray-900 sm:mt-0 sm:col-span-2">
+                            <div className="bg-brand-dark-light/30 px-6 py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                                <dt className="text-sm font-medium text-brand-platinum">Total Amount</dt>
+                                <dd className="mt-1 text-xl font-bold text-brand-blue-glow sm:mt-0 sm:col-span-2">
                                     ¥{listing.price.toLocaleString()}
                                 </dd>
                             </div>
@@ -172,23 +172,23 @@ export default function CheckoutPage() {
                 </div>
 
                 {error && (
-                    <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                    <div className="bg-red-500/10 border border-red-500/20 p-4 mb-6 rounded-xl">
                         <div className="flex">
                             <div className="ml-3">
-                                <p className="text-sm text-red-700">{error}</p>
+                                <p className="text-sm text-red-400">{error}</p>
                             </div>
                         </div>
                     </div>
                 )}
 
                 <div className="flex justify-end space-x-4">
-                    <Link href={`/listings/${listing.id}`} className="bg-white py-3 px-6 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <Link href={`/listings/${listing.id}`} className="px-6 py-3 border border-brand-platinum/20 rounded-xl text-sm font-medium text-brand-platinum hover:bg-brand-platinum/10 hover:text-white transition-all">
                         Cancel
                     </Link>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={processing}
-                        className={`inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${processing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`inline-flex justify-center px-6 py-3 border border-transparent shadow-lg text-sm font-medium rounded-xl text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${processing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {processing ? 'Processing...' : 'Confirm Purchase'}
                     </button>

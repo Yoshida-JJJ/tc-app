@@ -72,7 +72,7 @@ export default function ListingDetail() {
                     </Link>
                 </nav>
 
-                <div className="glass-panel rounded-2xl shadow-2xl overflow-hidden border border-brand-platinum/10">
+                <div className="glass-panel-premium rounded-2xl shadow-2xl overflow-hidden border border-white/10">
                     <div className="md:flex">
                         {/* Image Gallery Section */}
                         <div className="md:w-1/2 p-8 bg-brand-dark-light/50">
@@ -164,7 +164,7 @@ export default function ListingDetail() {
                                 <div className="flex items-end justify-between mb-8">
                                     <div>
                                         <p className="text-sm text-brand-platinum/50 uppercase tracking-wider mb-1">Current Price</p>
-                                        <p className="text-5xl font-heading font-bold text-white tracking-tight">¥{listing.price.toLocaleString()}</p>
+                                        <p className="text-5xl font-heading font-bold text-brand-gold text-gold-glow tracking-tight">¥{listing.price.toLocaleString()}</p>
                                     </div>
                                 </div>
 

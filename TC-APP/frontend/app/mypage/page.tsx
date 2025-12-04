@@ -89,28 +89,28 @@ export default function MyPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">My Page</h1>
+                <h1 className="text-3xl font-heading font-bold text-white mb-8">My Collection</h1>
 
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                    <div className="border-b border-gray-200">
+                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl border border-white/10">
+                    <div className="border-b border-brand-platinum/10">
                         <nav className="-mb-px flex" aria-label="Tabs">
                             <button
                                 onClick={() => setActiveTab('listings')}
                                 className={`${activeTab === 'listings'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                    ? 'border-brand-blue text-brand-blue-glow'
+                                    : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
+                                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
                             >
                                 My Listings
                             </button>
                             <button
                                 onClick={() => setActiveTab('orders')}
                                 className={`${activeTab === 'orders'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                    ? 'border-brand-blue text-brand-blue-glow'
+                                    : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
+                                    } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
                             >
                                 My Orders
                             </button>
@@ -120,34 +120,34 @@ export default function MyPage() {
                     <div className="p-6">
                         {activeTab === 'listings' ? (
                             <div>
-                                <h2 className="text-lg font-medium text-gray-900 mb-4">Items you are selling</h2>
+                                <h2 className="text-lg font-medium text-white mb-4">Items you are selling</h2>
                                 {myListings.length === 0 ? (
-                                    <p className="text-gray-500">You haven't listed any items yet.</p>
+                                    <p className="text-brand-platinum/60">You haven't listed any items yet.</p>
                                 ) : (
-                                    <ul className="divide-y divide-gray-200">
+                                    <ul className="divide-y divide-brand-platinum/10">
                                         {myListings.map((item) => (
-                                            <li key={item.id} className="py-4 flex">
-                                                <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                            <li key={item.id} className="py-4 flex group">
+                                                <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-brand-platinum/10 bg-brand-dark-light/50">
                                                     <img
                                                         src={item.images[0]}
                                                         alt={item.catalog.player_name}
-                                                        className="h-full w-full object-cover object-center"
+                                                        className="h-full w-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
                                                     />
                                                 </div>
                                                 <div className="ml-4 flex flex-1 flex-col">
                                                     <div>
-                                                        <div className="flex justify-between text-base font-medium text-gray-900">
+                                                        <div className="flex justify-between text-base font-medium text-white">
                                                             <h3>
-                                                                <Link href={`/listings/${item.id}`}>
+                                                                <Link href={`/listings/${item.id}`} className="hover:text-brand-blue-glow transition-colors">
                                                                     {item.catalog.player_name}
                                                                 </Link>
                                                             </h3>
-                                                            <p className="ml-4">¥{item.price.toLocaleString()}</p>
+                                                            <p className="ml-4 font-bold text-brand-gold text-gold-glow">¥{item.price.toLocaleString()}</p>
                                                         </div>
-                                                        <p className="mt-1 text-sm text-gray-500">{item.catalog.year} {item.catalog.manufacturer}</p>
+                                                        <p className="mt-1 text-sm text-brand-platinum/60">{item.catalog.year} {item.catalog.manufacturer}</p>
                                                     </div>
                                                     <div className="flex flex-1 items-end justify-between text-sm">
-                                                        <p className={`font-medium ${item.status === 'Active' ? 'text-green-600' : 'text-gray-500'
+                                                        <p className={`font-medium ${item.status === 'Active' ? 'text-green-400' : 'text-brand-platinum/60'
                                                             }`}>
                                                             Status: {item.status}
                                                         </p>
@@ -160,26 +160,26 @@ export default function MyPage() {
                             </div>
                         ) : (
                             <div>
-                                <h2 className="text-lg font-medium text-gray-900 mb-4">Your Purchase History</h2>
+                                <h2 className="text-lg font-medium text-white mb-4">Your Purchase History</h2>
                                 {myOrders.length === 0 ? (
-                                    <p className="text-gray-500">You haven't purchased any items yet.</p>
+                                    <p className="text-brand-platinum/60">You haven't purchased any items yet.</p>
                                 ) : (
-                                    <ul className="divide-y divide-gray-200">
+                                    <ul className="divide-y divide-brand-platinum/10">
                                         {myOrders.map((order) => (
                                             <li key={order.id} className="py-4">
                                                 <div className="flex justify-between">
                                                     <div>
-                                                        <p className="text-sm font-medium text-gray-900">Order ID: {order.id}</p>
-                                                        <p className="text-sm text-gray-500">Total: ¥{order.total_amount.toLocaleString()}</p>
+                                                        <p className="text-sm font-medium text-white">Order ID: {order.id}</p>
+                                                        <p className="text-sm text-brand-platinum/60">Total: <span className="text-brand-platinum">¥{order.total_amount.toLocaleString()}</span></p>
                                                     </div>
                                                     <div>
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
                                                             {order.status}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div className="mt-2">
-                                                    <Link href={`/orders/${order.id}/success`} className="text-blue-600 hover:text-blue-500 text-sm">
+                                                    <Link href={`/orders/${order.id}/success`} className="text-brand-blue hover:text-brand-blue-glow text-sm transition-colors">
                                                         View Details
                                                     </Link>
                                                 </div>

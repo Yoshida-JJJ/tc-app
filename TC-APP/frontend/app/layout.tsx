@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${outfit.variable} font-sans bg-brand-dark text-white antialiased`}>
+      <body className={`${inter.variable} ${outfit.variable} font-sans text-white antialiased`}>
         <Providers>
           <Header />
           <main>{children}</main>

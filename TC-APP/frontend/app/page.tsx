@@ -61,7 +61,7 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 flex-1 w-full">
         {/* Search & Filter Bar */}
-        <div className="glass-panel p-6 rounded-2xl shadow-2xl mb-12 animate-fade-in-up">
+        <div className="glass-panel-premium p-6 rounded-2xl shadow-2xl mb-12 animate-fade-in-up">
           <div className="flex flex-col md:flex-row gap-4 items-center">
             {/* Search Input */}
             <div className="flex-1 w-full">
