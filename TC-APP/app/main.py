@@ -450,18 +450,6 @@ def seed_data(db: Session = Depends(get_db)):
     from seed_db import seed_db
     try:
         seed_db()
-        return {"message": "Database seeded successfully!"}
-    except Exception as e:
-        return {"message": f"Seeding failed: {str(e)}"}
-
-@app.get("/debug/validate_listings")
-def debug_validate_listings(db: Session = Depends(get_db)):
-# --- Transaction Flow Endpoints ---
-
-@app.post("/market/orders/{order_id}/capture", response_model=schemas.OrderResponse)
-def capture_order(order_id: str, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
     listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
