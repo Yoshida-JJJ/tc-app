@@ -21,12 +21,7 @@ module.exports = {
                 sans: ["var(--font-inter)", "sans-serif"],
                 heading: ["var(--font-outfit)", "sans-serif"],
             },
-            animation: {
-                "fade-in-up": "fadeInUp 0.5s ease-out forwards",
-                "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                "float": "float 6s ease-in-out infinite",
-                "spotlight": "spotlight 2s ease-in-out infinite alternate",
-            },
+
             keyframes: {
                 fadeInUp: {
                     "0%": { opacity: "0", transform: "translateY(10px)" },
@@ -48,6 +43,11 @@ module.exports = {
                     "0%": { transform: "rotate(0deg)" },
                     "100%": { transform: "rotate(360deg)" },
                 },
+                shake: {
+                    "0%, 100%": { transform: "translateX(0)" },
+                    "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-5px)" },
+                    "20%, 40%, 60%, 80%": { transform: "translateX(5px)" },
+                },
             },
             animation: {
                 "fade-in-up": "fadeInUp 0.5s ease-out forwards",
@@ -56,6 +56,7 @@ module.exports = {
                 "spotlight": "spotlight 2s ease-in-out infinite alternate",
                 "shimmer": "shimmer 3s linear infinite",
                 "rotate-slow": "rotate-slow 10s linear infinite",
+                "shake": "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
             },
         },
     },
