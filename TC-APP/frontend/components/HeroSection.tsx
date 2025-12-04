@@ -1,6 +1,28 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ListingItem } from '../types';
 
 export default function HeroSection() {
+    const [featuredCard, setFeaturedCard] = useState<ListingItem | null>(null);
+
+    useEffect(() => {
+        const fetchFeatured = async () => {
+            try {
+                // Fetch listings sorted by price descending to get the most expensive one
+                const res = await fetch('/api/proxy/market/listings?sort=price_desc&limit=1');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.length > 0) {
+                        setFeaturedCard(data[0]);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch featured card:", error);
+            }
+        };
+        fetchFeatured();
+    }, []);
+
     return (
         <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-20">
             {/* Spotlight Effects */}
@@ -18,32 +40,60 @@ export default function HeroSection() {
             <div className="relative z-10 mb-12 animate-float">
                 <div className="relative w-64 h-96 md:w-80 md:h-[500px] rounded-2xl p-2 bg-gradient-to-b from-brand-platinum/20 to-brand-dark-light/80 backdrop-blur-md border border-brand-platinum/30 shadow-[0_0_50px_rgba(59,130,246,0.3)]">
                     {/* Inner Card Frame */}
-                    <div className="w-full h-full rounded-xl overflow-hidden relative border border-brand-blue/30 bg-brand-dark-light">
-                        {/* Card Image Placeholder */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-brand-dark-light to-brand-blue/20 flex items-center justify-center">
-                            <span className="text-brand-platinum/20 font-heading text-6xl font-bold">TC</span>
-                        </div>
-                        <img
-                            src="https://placehold.co/400x600/1e293b/e2e8f0?text=Legendary+Holo"
-                            alt="Featured Card"
-                            className="w-full h-full object-cover opacity-80 mix-blend-overlay"
-                        />
-
-                        {/* Holo Effect Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-50"></div>
-
-                        {/* Card Details Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <p className="text-brand-gold text-xs font-bold tracking-widest mb-1">LEGENDARY HOLO</p>
-                                    <h3 className="text-white font-heading text-xl font-bold">BABE RUTH</h3>
+                    <div className="w-full h-full rounded-xl overflow-hidden relative border border-brand-blue/30 bg-brand-dark-light group cursor-pointer">
+                        {featuredCard ? (
+                            <Link href={`/listings/${featuredCard.id}`}>
+                                {/* Card Image */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-brand-dark-light to-brand-blue/20 flex items-center justify-center">
+                                    {!featuredCard.images?.[0] && <span className="text-brand-platinum/20 font-heading text-6xl font-bold">TC</span>}
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-brand-blue-glow text-xs uppercase">Serial #1/1</p>
+                                {featuredCard.images?.[0] && (
+                                    <img
+                                        src={featuredCard.images[0]}
+                                        alt={featuredCard.catalog.player_name}
+                                        className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
+                                    />
+                                )}
+
+                                {/* Holo Effect Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-50 group-hover:opacity-70 transition-opacity"></div>
+
+                                {/* Card Details Overlay */}
+                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-brand-gold text-xs font-bold tracking-widest mb-1 uppercase">
+                                                {featuredCard.catalog.rarity || 'PREMIUM'}
+                                            </p>
+                                            <h3 className="text-white font-heading text-xl font-bold leading-tight">
+                                                {featuredCard.catalog.player_name}
+                                            </h3>
+                                            <p className="text-brand-platinum/80 text-xs mt-1">
+                                                {featuredCard.catalog.year} {featuredCard.catalog.manufacturer}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-brand-blue-glow text-lg font-bold">
+                                                ¥{featuredCard.price.toLocaleString()}
+                                            </p>
+                                            {featuredCard.condition_grading?.is_graded && (
+                                                <p className="text-brand-platinum/60 text-[10px] uppercase">
+                                                    {featuredCard.condition_grading.service} {featuredCard.condition_grading.score}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : (
+                            // Loading / Placeholder State
+                            <div className="w-full h-full flex items-center justify-center bg-brand-dark-light">
+                                <div className="animate-pulse flex flex-col items-center">
+                                    <div className="h-12 w-12 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-4"></div>
+                                    <p className="text-brand-platinum/50 text-sm">Loading Featured Card...</p>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Outer Glow Ring */}

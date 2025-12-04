@@ -405,20 +405,6 @@ def deliver_order(order_id: str, db: Session = Depends(get_db)):
 
 @app.get("/debug/seed", include_in_schema=False)
 def seed_data(db: Session = Depends(get_db)):
-    # Import here to avoid circular imports if any
-    from seed_db import seed_db
-    try:
-        seed_db()
-        return {"message": "Database seeded successfully!"}
-    except Exception as e:
-        return {"message": f"Seeding failed: {str(e)}"}
-
-@app.get("/debug/validate_listings")
-def debug_validate_listings(db: Session = Depends(get_db)):
-    try:
-        items = db.query(models.ListingItem).join(models.CardCatalog).all()
-        results = []
-        for item in items:
             try:
                 # Manually validate against schema
                 schema_item = schemas.ListingItemResponse.model_validate(item)
