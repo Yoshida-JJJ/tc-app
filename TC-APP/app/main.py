@@ -400,25 +400,6 @@ def deliver_order(order_id: str, db: Session = Depends(get_db)):
         return {
             "status": "error",
             "detail": str(e),
-            "type": type(e).__name__
-        }
-
-@app.get("/debug/seed", include_in_schema=False)
-def seed_data(db: Session = Depends(get_db)):
-            try:
-                # Manually validate against schema
-                schema_item = schemas.ListingItemResponse.model_validate(item)
-                results.append({"id": item.id, "status": "valid"})
-            except Exception as e:
-                results.append({"id": item.id, "status": "invalid", "error": str(e)})
-        return results
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/debug/check_data")
-def debug_check_data(db: Session = Depends(get_db)):
-    try:
-        catalogs = db.query(models.CardCatalog).all()
         listings = db.query(models.ListingItem).all()
         
         return {
