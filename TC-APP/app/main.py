@@ -432,35 +432,6 @@ def debug_db(db: Session = Depends(get_db)):
             counts["listing_items"] = db.query(models.ListingItem).count()
             
         return {
-            "status": "ok",
-            "tables": table_names,
-            "counts": counts,
-            "database_url_set": bool(os.getenv("DATABASE_URL"))
-        }
-    except Exception as e:
-        return {
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.TransactionPending:
-         raise HTTPException(status_code=400, detail="Invalid status for failure")
-
-    listing.status = models.ListingStatus.Active # Revert to Active
-    # Note: In a real system, we might want to mark the order as failed instead of just reverting the listing
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
-
-@app.post("/market/orders/{order_id}/ship", response_model=schemas.OrderResponse)
-def ship_order(
-    order_id: str, 
-    shipment: schemas.ShipmentCreate,
     db: Session = Depends(get_db)
 ):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
