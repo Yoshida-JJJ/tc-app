@@ -402,62 +402,6 @@ def complete_order(order_id: str, db: Session = Depends(get_db)):
         id=order.id,
         listing_id=listing.id,
         buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
-
-# --- Debug Endpoints ---
-@app.get("/debug/db")
-def debug_db(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    try:
-        # Test connection
-        db.execute(text("SELECT 1"))
-        
-        # Check tables (PostgreSQL specific query, fallback for SQLite if needed)
-        try:
-            tables = db.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")).fetchall()
-            table_names = [t[0] for t in tables]
-        except:
-            # Fallback for SQLite
-            tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
-            table_names = [t[0] for t in tables]
-        
-        # Check row counts
-        counts = {}
-        if "card_catalogs" in table_names:
-            counts["card_catalogs"] = db.query(models.CardCatalog).count()
-        if "listing_items" in table_names:
-            counts["listing_items"] = db.query(models.ListingItem).count()
-            
-        return {
-    db: Session = Depends(get_db)
-):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.AwaitingShipment:
-         raise HTTPException(status_code=400, detail="Invalid status for shipping")
-
-    listing.status = models.ListingStatus.Shipped
-    order.tracking_number = shipment.tracking_number
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
-
-@app.post("/market/orders/{order_id}/deliver", response_model=schemas.OrderResponse)
-def deliver_order(order_id: str, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
     listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
