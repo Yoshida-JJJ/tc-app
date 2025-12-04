@@ -395,35 +395,6 @@ def deliver_order(order_id: str, db: Session = Depends(get_db)):
             "tables": table_names,
             "counts": counts,
             "database_url_set": bool(os.getenv("DATABASE_URL"))
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "detail": str(e),
-        listings = db.query(models.ListingItem).all()
-        
-        return {
-            "catalog_count": len(catalogs),
-            "listing_count": len(listings),
-            "catalogs_sample": [
-                {"id": str(c.id), "player": c.player_name} for c in catalogs[:5]
-            ],
-            "listings_sample": [
-                {
-                    "id": str(l.id), 
-                    "catalog_id": l.catalog_id, 
-                    "status": str(l.status),
-                    "price": l.price
-                } for l in listings[:5]
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/debug/migrate_enums")
-def debug_migrate_enums(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    messages = []
     
     # List of enums and values to add
     # (Enum Type Name, Value to Add)
