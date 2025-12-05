@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 
@@ -10,11 +10,53 @@ export default function ProfilePage() {
     const { data: session, status } = useSession();
     const router = useRouter();
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editEmail, setEditEmail] = useState('');
+    const [saving, setSaving] = useState(false);
+
     useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/login');
         }
-    }, [status, router]);
+        if (session?.user) {
+            setEditName(session.user.name || '');
+            setEditEmail(session.user.email || '');
+        }
+    }, [status, router, session]);
+
+    const handleSave = async () => {
+        if (!session?.user?.id) return;
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/proxy/auth/users/${session.user.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: editName,
+                    email: editEmail,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to update profile');
+            }
+
+            const updatedUser = await res.json();
+            // In a real app, we should update the session here.
+            // For now, we'll just toggle off editing and maybe show a success message.
+            setIsEditing(false);
+            alert('Profile updated successfully! Please sign out and sign in again to see changes in the header.');
+
+        } catch (error) {
+            console.error(error);
+            alert('Failed to update profile.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     if (status === 'loading') {
         return (
@@ -65,34 +107,83 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Info */}
-                            <div className="flex-1 text-center md:text-left space-y-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">
-                                        {session.user?.name || 'Trading Card Collector'}
-                                    </h2>
-                                    <p className="text-brand-platinum/60 font-mono text-sm">
-                                        {session.user?.email}
-                                    </p>
-                                </div>
+                            <div className="flex-1 text-center md:text-left space-y-4 w-full">
+                                {isEditing ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Name</label>
+                                            <input
+                                                type="text"
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
+                                            <input
+                                                type="email"
+                                                value={editEmail}
+                                                onChange={(e) => setEditEmail(e.target.value)}
+                                                className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white mb-1">
+                                            {editName || session.user?.name || 'Trading Card Collector'}
+                                        </h2>
+                                        <p className="text-brand-platinum/60 font-mono text-sm">
+                                            {editEmail || session.user?.email}
+                                        </p>
+                                    </div>
+                                )}
 
-                                <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                                    <span className="px-3 py-1 rounded-full bg-brand-blue/10 text-brand-blue text-xs font-bold border border-brand-blue/20">
-                                        MEMBER
-                                    </span>
-                                    <span className="px-3 py-1 rounded-full bg-brand-gold/10 text-brand-gold text-xs font-bold border border-brand-gold/20">
-                                        EARLY ADOPTER
-                                    </span>
-                                </div>
+                                {!isEditing && (
+                                    <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                                        <span className="px-3 py-1 rounded-full bg-brand-blue/10 text-brand-blue text-xs font-bold border border-brand-blue/20">
+                                            MEMBER
+                                        </span>
+                                        <span className="px-3 py-1 rounded-full bg-brand-gold/10 text-brand-gold text-xs font-bold border border-brand-gold/20">
+                                            EARLY ADOPTER
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
                             <div className="flex flex-col gap-3 w-full md:w-auto">
-                                <button className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-all">
-                                    Edit Profile
-                                </button>
-                                <Link href="/collection" className="px-6 py-2 rounded-xl bg-brand-blue hover:bg-brand-blue-glow text-white font-bold text-sm shadow-lg shadow-brand-blue/20 transition-all text-center">
-                                    My Collection
-                                </Link>
+                                {isEditing ? (
+                                    <>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={saving}
+                                            className="px-6 py-2 rounded-xl bg-brand-blue hover:bg-brand-blue-glow text-white font-bold text-sm shadow-lg shadow-brand-blue/20 transition-all text-center disabled:opacity-50"
+                                        >
+                                            {saving ? 'Saving...' : 'Save Changes'}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            disabled={saving}
+                                            className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => setIsEditing(true)}
+                                            className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-all"
+                                        >
+                                            Edit Profile
+                                        </button>
+                                        <Link href="/collection" className="px-6 py-2 rounded-xl bg-brand-blue hover:bg-brand-blue-glow text-white font-bold text-sm shadow-lg shadow-brand-blue/20 transition-all text-center">
+                                            My Collection
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

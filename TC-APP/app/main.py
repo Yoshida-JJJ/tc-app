@@ -87,6 +87,27 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
         
     return user
 
+@app.put("/auth/users/{user_id}", response_model=schemas.UserResponse)
+def update_user(user_id: str, user_update: schemas.UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user_update.name is not None:
+        user.name = user_update.name
+    if user_update.email is not None:
+        # Check if email is taken by another user
+        existing_user = db.query(models.User).filter(models.User.email == user_update.email).first()
+        if existing_user and existing_user.id != user_id:
+             raise HTTPException(status_code=400, detail="Email already registered")
+        user.email = user_update.email
+    if user_update.password is not None:
+        user.hashed_password = utils.get_password_hash(user_update.password)
+        
+    db.commit()
+    db.refresh(user)
+    return user
+
 # --- Catalog Endpoints ---
 @app.get("/catalog/cards", response_model=List[schemas.CardCatalog])
 def get_catalog_cards(

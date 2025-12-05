@@ -19,6 +19,11 @@ class UserResponse(UserBase):
     
     model_config = ConfigDict(from_attributes=True)
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
 # --- Catalog Schemas ---
 class CardCatalogBase(BaseModel):
     manufacturer: Manufacturer
