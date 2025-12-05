@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import models, schemas, database, utils
+from . import models, schemas, database, utils
 import os
 import uuid
 import shutil
