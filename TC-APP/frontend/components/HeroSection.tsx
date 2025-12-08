@@ -5,12 +5,18 @@ import { ListingItem } from '../types';
 import { createClient } from '../utils/supabase/client';
 
 export default function HeroSection() {
-    const [featuredCard, setFeaturedCard] = useState<ListingItem | null>(null);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        const fetchFeatured = async () => {
+        const fetchFeaturedAndUser = async () => {
+            const supabase = createClient();
+
+            // Fetch User
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+
+            // Fetch Featured Card
             try {
-                const supabase = createClient();
                 const { data, error } = await supabase
                     .from('listing_items')
                     .select('*, catalog:card_catalogs(*)')
@@ -28,7 +34,7 @@ export default function HeroSection() {
                 console.error("Failed to fetch featured card:", error);
             }
         };
-        fetchFeatured();
+        fetchFeaturedAndUser();
     }, []);
 
     return (
@@ -132,13 +138,31 @@ export default function HeroSection() {
                 </p>
 
                 <div className="flex flex-col md:flex-row gap-6 justify-center animate-fade-in-up delay-300">
-                    <Link
-                        href="/market"
-                        className="group relative px-8 py-4 bg-brand-blue text-white font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                        <span className="relative z-10">EXPLORE MARKETPLACE</span>
-                    </Link>
+                    {user ? (
+                        <Link
+                            href="/market"
+                            className="group relative px-8 py-4 bg-brand-blue text-white font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                            <span className="relative z-10">EXPLORE MARKETPLACE</span>
+                        </Link>
+                    ) : (
+                        <>
+                            <Link
+                                href="/register"
+                                className="group relative px-8 py-4 bg-brand-gold text-brand-dark font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                <span className="relative z-10">SIGN UP NOW</span>
+                            </Link>
+                            <Link
+                                href="/login"
+                                className="px-8 py-4 bg-white/5 text-white font-bold rounded-full border border-white/10 hover:bg-white/10 transition-all hover:scale-105 backdrop-blur-md"
+                            >
+                                SIGN IN
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </section>
