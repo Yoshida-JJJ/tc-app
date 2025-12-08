@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Footer from '../../../components/Footer';
 import { createClient } from '../../../utils/supabase/client';
 
 // Types (Duplicate from page.tsx for now)
@@ -166,8 +167,8 @@ export default function CheckoutPage() {
     if (!listing) return null;
 
     return (
-        <div className="min-h-screen pt-32 pb-48 px-4 sm:px-6 lg:px-8 bg-brand-dark overflow-y-auto">
-            <div className="max-w-3xl mx-auto">
+        <div className="min-h-screen bg-brand-dark flex flex-col">
+            <div className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
                 <h1 className="text-3xl font-heading font-bold text-white mb-8">Checkout</h1>
 
                 <div className="glass-panel-premium shadow-2xl rounded-2xl mb-6">
@@ -244,6 +245,7 @@ export default function CheckoutPage() {
                     </button>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 }
