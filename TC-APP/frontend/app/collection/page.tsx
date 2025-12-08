@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { createClient } from '../../utils/supabase/client';
+import AddToShowcaseModal from '../../components/AddToShowcaseModal';
 import ShowcaseCard from '../../components/ShowcaseCard';
 import PurchaseAnimation from '../../components/PurchaseAnimation';
 import SkeletonCard from '../../components/SkeletonCard';
