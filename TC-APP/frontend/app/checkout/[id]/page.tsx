@@ -69,7 +69,12 @@ export default function CheckoutPage() {
                     .single();
 
                 if (profile) {
+                    const fullName = profile.last_name && profile.first_name
+                        ? `${profile.last_name} ${profile.first_name}`
+                        : profile.name || '';
+
                     const addressParts = [
+                        fullName,
                         profile.postal_code ? `〒${profile.postal_code}` : '',
                         profile.address_line1,
                         profile.address_line2,

@@ -21,6 +21,20 @@ export interface ConditionGrading {
     certification_number?: string;
 }
 
+export interface Profile {
+    id: string;
+    email: string;
+    display_name?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    avatar_url?: string;
+    phone_number?: string;
+    postal_code?: string;
+    address_line1?: string;
+    address_line2?: string;
+}
+
 export interface ListingItem {
     id: string;
     catalog_id: string;
@@ -30,4 +44,5 @@ export interface ListingItem {
     seller_id: string;
     status: string;
     catalog: CardCatalog;
+    seller?: Profile;
 }
