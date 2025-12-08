@@ -14,7 +14,9 @@ export default function ProfilePage() {
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editName, setEditName] = useState('');
+    const [editDisplayName, setEditDisplayName] = useState('');
+    const [editFirstName, setEditFirstName] = useState('');
+    const [editLastName, setEditLastName] = useState('');
     const [editEmail, setEditEmail] = useState('');
     const [editPostalCode, setEditPostalCode] = useState('');
     const [editAddressLine1, setEditAddressLine1] = useState('');
@@ -44,13 +46,15 @@ export default function ProfilePage() {
 
             if (profileData) {
                 setProfile(profileData);
-                setEditName(profileData.name || user.user_metadata?.name || '');
+                setEditDisplayName(profileData.display_name || profileData.name || user.user_metadata?.name || '');
+                setEditFirstName(profileData.first_name || '');
+                setEditLastName(profileData.last_name || '');
                 setEditPostalCode(profileData.postal_code || '');
                 setEditAddressLine1(profileData.address_line1 || '');
                 setEditAddressLine2(profileData.address_line2 || '');
                 setEditPhoneNumber(profileData.phone_number || '');
             } else {
-                setEditName(user.user_metadata?.name || '');
+                setEditDisplayName(user.user_metadata?.name || '');
             }
 
             setLoading(false);
@@ -70,27 +74,32 @@ export default function ProfilePage() {
                 .from('profiles')
                 .upsert({
                     id: user.id,
-                    name: editName,
+                    display_name: editDisplayName,
+                    first_name: editFirstName,
+                    last_name: editLastName,
+                    // name: editDisplayName, // Optional: duplicate to name for compat
                     email: user.email,
                     postal_code: editPostalCode,
                     address_line1: editAddressLine1,
                     address_line2: editAddressLine2,
                     phone_number: editPhoneNumber,
+                    updated_at: new Date().toISOString(),
                 });
 
             if (profileError) throw profileError;
 
             // Update Auth Metadata (optional, but good for consistency)
-            const { error: authError } = await supabase.auth.updateUser({
-                data: { name: editName },
-                // email: editEmail // Updating email requires confirmation flow usually
-            });
+            /* const { error: authError } = await supabase.auth.updateUser({
+                data: { name: editDisplayName },
+            }); */
 
-            if (authError) throw authError;
+            // if (authError) throw authError;
 
             setProfile({
                 ...profile,
-                name: editName,
+                display_name: editDisplayName,
+                first_name: editFirstName,
+                last_name: editLastName,
                 postal_code: editPostalCode,
                 address_line1: editAddressLine1,
                 address_line2: editAddressLine2,
@@ -159,15 +168,38 @@ export default function ProfilePage() {
                             <div className="flex-1 text-center md:text-left space-y-4 w-full">
                                 {isEditing ? (
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Name</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Nickname (Display Name)</label>
                                                 <input
                                                     type="text"
-                                                    value={editName}
-                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    value={editDisplayName}
+                                                    onChange={(e) => setEditDisplayName(e.target.value)}
+                                                    placeholder="e.g. CardMaster2024"
                                                     className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
                                                 />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (Kanji)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editLastName}
+                                                        onChange={(e) => setEditLastName(e.target.value)}
+                                                        placeholder="山田"
+                                                        className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (Kanji)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editFirstName}
+                                                        onChange={(e) => setEditFirstName(e.target.value)}
+                                                        placeholder="太郎"
+                                                        className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                    />
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
@@ -230,16 +262,19 @@ export default function ProfilePage() {
                                 ) : (
                                     <div>
                                         <h2 className="text-2xl font-bold text-white mb-1">
-                                            {editName || profile?.name || user?.user_metadata?.name || 'Trading Card Collector'}
+                                            {profile?.display_name || editDisplayName || 'No Nickname'}
                                         </h2>
                                         <p className="text-brand-platinum/60 font-mono text-sm mb-4">
-                                            {editEmail || user?.email}
+                                            @{profile?.email?.split('@')[0] || 'username'}
                                         </p>
 
                                         {(profile?.address_line1 || profile?.postal_code) && (
                                             <div className="bg-brand-dark-light/30 p-4 rounded-xl border border-brand-platinum/10 text-left">
-                                                <h3 className="text-xs font-bold text-brand-platinum uppercase tracking-wider mb-2">Shipping Address</h3>
-                                                <p className="text-white text-sm">
+                                                <h3 className="text-xs font-bold text-brand-platinum uppercase tracking-wider mb-2">Shipping Information</h3>
+                                                <p className="text-white text-sm font-bold mb-1">
+                                                    {profile.last_name} {profile.first_name}
+                                                </p>
+                                                <p className="text-brand-platinum/80 text-sm">
                                                     〒{profile.postal_code}<br />
                                                     {profile.address_line1}<br />
                                                     {profile.address_line2}<br />
