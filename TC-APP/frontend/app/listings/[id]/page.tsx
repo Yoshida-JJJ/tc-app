@@ -31,7 +31,7 @@ export default function ListingDetail() {
             try {
                 const { data, error } = await supabase
                     .from('listing_items')
-                    .select('*, catalog:card_catalogs(*)')
+                    .select('*, catalog:card_catalogs(*), seller:profiles(*)')
                     .eq('id', id)
                     .single();
 
@@ -71,6 +71,12 @@ export default function ListingDetail() {
             </div>
         );
     }
+
+    // Helper to get seller display name
+    const getSellerName = (seller: any) => {
+        if (!seller) return 'Unknown Seller';
+        return seller.display_name || seller.name || 'Trading Card Collector';
+    };
 
     return (
         <div className="min-h-screen bg-brand-dark pt-32 pb-32 px-4 sm:px-6 lg:px-8 flex flex-col">
@@ -172,7 +178,25 @@ export default function ListingDetail() {
                                 </div>
                                 <h1 className="text-4xl md:text-5xl font-heading font-bold text-white mb-2 text-glow">{listing.catalog.player_name}</h1>
                                 <p className="text-xl text-brand-platinum/80 font-light">{listing.catalog.year} {listing.catalog.manufacturer} {listing.catalog.series_name}</p>
-                                <p className="text-brand-platinum/50 mt-2">Card #{listing.catalog.card_number}</p>
+                                <p className="text-brand-platinum/50 mt-2 text-sm">Card #{listing.catalog.card_number}</p>
+
+                                {/* Seller Info */}
+                                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-brand-platinum/10">
+                                    <div className="w-10 h-10 rounded-full bg-brand-platinum/10 overflow-hidden relative">
+                                        <Image
+                                            src={listing.seller?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${listing.seller?.display_name || listing.seller?.email || 'Seller'}`}
+                                            alt="Seller"
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">Seller</p>
+                                        <Link href={`/profile/${listing.seller_id}`} className="text-white font-medium hover:text-brand-blue transition-colors">
+                                            {getSellerName(listing.seller)}
+                                        </Link>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="border-t border-brand-platinum/10 py-8">
