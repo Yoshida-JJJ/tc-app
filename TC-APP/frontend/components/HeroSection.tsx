@@ -6,6 +6,7 @@ import { createClient } from '../utils/supabase/client';
 
 export default function HeroSection() {
     const [user, setUser] = useState<any>(null);
+    const [featuredCard, setFeaturedCard] = useState<ListingItem | null>(null);
 
     useEffect(() => {
         const fetchFeaturedAndUser = async () => {
