@@ -79,7 +79,7 @@ export default function MarketPage() {
     const teams: Team[] = ["Giants", "Tigers", "Dragons", "Swallows", "Carp", "BayStars", "Hawks", "Fighters", "Marines", "Buffaloes", "Eagles", "Lions"];
 
     return (
-        <div className="min-h-screen bg-brand-dark flex flex-col">
+        <div className="min-h-screen bg-brand-dark flex flex-col pb-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 relative z-20 flex-1 w-full">
                 <div className="mb-8">
                     <h1 className="text-4xl font-heading font-bold text-white mb-2">Marketplace</h1>

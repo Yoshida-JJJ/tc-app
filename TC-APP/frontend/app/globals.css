@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply text-white font-sans antialiased relative min-h-screen;
+    @apply text-white font-sans antialiased relative min-h-screen overflow-x-hidden;
     background-color: transparent;
     background-image:
       radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),

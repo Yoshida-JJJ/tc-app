@@ -248,7 +248,7 @@ export default function MyPage() {
     if (!user && !loading) return null;
 
     return (
-        <div className="min-h-screen pt-32 pb-12 px-4 sm:px-6 lg:px-8 bg-brand-dark">
+        <div className="min-h-screen pt-32 pb-32 px-4 sm:px-6 lg:px-8 bg-brand-dark">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-heading font-bold text-white">My Collection</h1>
@@ -270,7 +270,7 @@ export default function MyPage() {
                     </div>
                 </div>
 
-                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl border border-white/10">
+                <div className="glass-panel-premium shadow-2xl rounded-2xl border border-white/10">
                     <div className="border-b border-brand-platinum/10">
                         <nav className="-mb-px flex" aria-label="Tabs">
                             <button
