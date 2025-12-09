@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-    // Staging Basic Auth Protection
+    // Staging Basic Auth Protection - DISABLED by user request
+    /*
     if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging') {
         const basicAuth = request.headers.get('authorization')
 
@@ -26,6 +27,7 @@ export async function middleware(request: NextRequest) {
             },
         })
     }
+    */
 
     return await updateSession(request)
 }
