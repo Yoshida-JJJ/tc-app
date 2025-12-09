@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import { motion } from 'framer-motion';
 import { ListingItem } from '../types';
 
@@ -13,6 +13,27 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
     const isSold = item.status !== 'Active';
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
+
+    // Countdown Logic
+    const [timeLeft, setTimeLeft] = useState<string>('60:00');
+    useEffect(() => {
+        if (isLiveMoment) {
+            const endTime = new Date().getTime() + 60 * 60 * 1000;
+            const timer = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+                if (distance > 0) {
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                } else {
+                    setTimeLeft('00:00');
+                    clearInterval(timer);
+                }
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [isLiveMoment]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -50,6 +71,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                     <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
                         LIVE
+                        <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
                     </div>
                 </div>
             )}
