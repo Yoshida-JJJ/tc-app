@@ -41,7 +41,7 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-32">
+        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center bg-brand-dark pt-32">
             {/* Spotlight Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Main Top Spotlight */}
@@ -140,7 +140,11 @@ export default function HeroSection() {
                     Verify, trade, and showcase your assets in a premium ecosystem.
                 </p>
 
-                <div className="flex flex-col md:flex-row gap-6 justify-center border border-white/10 p-4 rounded-xl">
+                <p className="text-red-500 font-bold mb-4">
+                    Visual Debug: Buttons should be below. z-index boosted.
+                </p>
+
+                <div className="flex flex-col md:flex-row gap-6 justify-center border border-white/10 p-4 rounded-xl relative z-50 bg-gray-900/80">
                     {user ? (
                         <Link
                             href="/market"
