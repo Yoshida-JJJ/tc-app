@@ -26,7 +26,8 @@ export default function LiveMomentToast({ data, onDismiss }: LiveMomentToastProp
     if (!data) return null;
 
     // Determine colors based on intensity/type
-    const isGold = data.intensity >= 4 || data.type === 'VICTORY' || data.type === 'RECORD_BREAK';
+    // User Request: Make ALL notifications Gold (Premium Look)
+    const isGold = true; // data.intensity >= 4 || data.type === 'VICTORY' || data.type === 'RECORD_BREAK';
 
     // Base styles
     const containerClasses = isGold
