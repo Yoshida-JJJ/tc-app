@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 // import { Providers } from "./providers";
 import Header from "../components/Header";
+import LiveMomentListener from "../components/LiveMomentListener";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} font-sans text-white antialiased`}>
         {/* <Providers> */}
         <Header />
+        <LiveMomentListener />
         <main>{children}</main>
         {/* </Providers> */}
       </body>
