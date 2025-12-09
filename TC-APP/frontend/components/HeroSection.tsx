@@ -145,29 +145,19 @@ export default function HeroSection() {
                 </p>
 
                 <div className="flex flex-col md:flex-row gap-6 justify-center border border-white/10 p-4 rounded-xl relative z-50 bg-gray-900/80">
-                    {user ? (
-                        <Link
-                            href="/market"
-                            className="group relative px-8 py-4 bg-blue-600 text-white font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center"
-                        >
-                            <span className="relative z-10">EXPLORE MARKETPLACE</span>
-                        </Link>
-                    ) : (
-                        <>
-                            <Link
-                                href="/register"
-                                className="group relative px-8 py-4 bg-yellow-500 text-black font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center"
-                            >
-                                <span className="relative z-10">SIGN UP NOW</span>
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="px-8 py-4 bg-white/10 text-white font-bold rounded-full border border-white/20 hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md flex items-center justify-center"
-                            >
-                                SIGN IN
-                            </Link>
-                        </>
-                    )}
+                    {/* DEBUG: FORCE RENDER GUEST BUTTONS WITH A TAGS */}
+                    <a
+                        href="/register"
+                        className="group relative px-8 py-4 bg-yellow-500 text-black font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center cursor-pointer"
+                    >
+                        <span className="relative z-10">SIGN UP NOW (HTML)</span>
+                    </a>
+                    <a
+                        href="/login"
+                        className="px-8 py-4 bg-white/10 text-white font-bold rounded-full border border-white/20 hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md flex items-center justify-center cursor-pointer"
+                    >
+                        SIGN IN (HTML)
+                    </a>
                 </div>
             </div>
         </section>
