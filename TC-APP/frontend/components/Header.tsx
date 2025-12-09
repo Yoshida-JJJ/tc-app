@@ -70,12 +70,14 @@ export default function Header() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3">
-                    <Link
-                        href="/sell"
-                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-dark rounded-full text-xs font-bold hover:bg-white transition-colors shadow-lg shadow-brand-gold/20"
-                    >
-                        <span>SELL</span>
-                    </Link>
+                    {user && (
+                        <Link
+                            href="/sell"
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-dark rounded-full text-xs font-bold hover:bg-white transition-colors shadow-lg shadow-brand-gold/20"
+                        >
+                            <span>SELL</span>
+                        </Link>
+                    )}
 
                     {/* User Profile / Mobile Menu Toggle */}
                     <div className="relative group">
@@ -151,9 +153,11 @@ export default function Header() {
                     <Link href="/collection" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY COLLECTION</Link>
                     <Link href="/auctions" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">AUCTIONS</Link>
                     {user && (
-                        <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
+                        <>
+                            <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
+                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
+                        </>
                     )}
-                    <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
                     {user ? (
                         <button onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">LOGOUT</button>
                     ) : (
