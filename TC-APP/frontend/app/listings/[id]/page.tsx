@@ -13,13 +13,50 @@ export default function ListingDetail() {
     const params = useParams();
     const searchParams = useSearchParams();
     const id = params?.id as string;
-    const isLiveMoment = searchParams.get('live') === 'true'; // Debug/Demo Mode
+    const isDebugLive = searchParams.get('live') === 'true';
 
     const [user, setUser] = useState<any>(null);
     const [listing, setListing] = useState<ListingItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Live Moment Logic
+    const [timeLeft, setTimeLeft] = useState<string>('60:00');
+    const [isLiveActive, setIsLiveActive] = useState(false);
+
+    useEffect(() => {
+        // Initialize Live State
+        // In a real scenario, we would check the 'live_moments' table relative to now.
+        // For Debug mode, we simulate a fresh 60-minute window.
+        if (isDebugLive) {
+            setIsLiveActive(true);
+            const endTime = new Date().getTime() + 60 * 60 * 1000; // 60 minutes from now
+
+            const timer = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+
+                if (distance < 0) {
+                    clearInterval(timer);
+                    setIsLiveActive(false);
+                    setTimeLeft('00:00');
+                } else {
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                }
+            }, 1000);
+
+            return () => clearInterval(timer);
+        } else {
+            // Reset if not live
+            setIsLiveActive(false);
+        }
+    }, [isDebugLive]);
+
+    // Derived state for pure visual toggle
+    const isLiveMoment = isLiveActive;
 
     // ... (rest of useEffect logic remains similar, skipping modification unless needed) ...
     useEffect(() => {
@@ -137,6 +174,9 @@ export default function ListingDetail() {
                                             <div className="relative px-3 py-1 bg-gradient-to-r from-brand-gold to-brand-gold-glow text-brand-dark text-[10px] font-bold tracking-widest uppercase rounded shadow-lg border border-white/30 flex items-center gap-2">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
                                                 LIVE MOMENT
+                                                <span className="ml-2 pl-2 border-l border-brand-dark/20 font-mono text-xs">
+                                                    {timeLeft}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
