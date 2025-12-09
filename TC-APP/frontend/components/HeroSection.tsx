@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ListingItem } from '../types';
@@ -40,7 +42,7 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-32">
+        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-red-900 pt-32">
             {/* Spotlight Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Main Top Spotlight */}
