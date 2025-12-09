@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { createClient } from '../../utils/supabase/client';
@@ -39,6 +39,9 @@ interface OrderItem {
 export default function MyPage() {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
+
     const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'history'>('showcase');
     const [historyTab, setHistoryTab] = useState<'sold' | 'purchased'>('sold');
     const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display' | 'Sold'>('All');
@@ -340,7 +343,7 @@ export default function MyPage() {
                                             onDelete={handleDeleteCollectionItem}
                                             onCancel={handleCancelListing}
                                             onToggleDisplay={handleToggleDisplay}
-                                            is_live_moment={item.is_live_moment}
+                                            is_live_moment={item.is_live_moment || isDebugLive}
                                         />
                                     ))}
                                     {filteredShowcaseItems.length === 0 && (

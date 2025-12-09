@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import ShowcaseCard from '@/components/ShowcaseCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import Image from 'next/image';
@@ -10,6 +10,9 @@ import Footer from '../../../components/Footer';
 
 export default function ProfilePage() {
     const params = useParams();
+    const searchParams = useSearchParams();
+    const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
+
     const userId = params.userId as string;
     const [profile, setProfile] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'showcase' | 'selling'>('showcase');
