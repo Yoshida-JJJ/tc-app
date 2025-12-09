@@ -45,4 +45,5 @@ export interface ListingItem {
     status: string;
     catalog: CardCatalog;
     seller?: Profile;
+    is_live_moment?: boolean;
 }
