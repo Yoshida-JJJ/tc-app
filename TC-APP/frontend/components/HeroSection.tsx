@@ -16,7 +16,6 @@ export default function HeroSection() {
 
             // Fetch User
             const { data: { user } } = await supabase.auth.getUser();
-            console.log("HeroSection Auth Check:", user ? "Logged In" : "Guest", user?.id);
             setUser(user);
 
             // Fetch Featured Card
@@ -42,7 +41,7 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-red-900 pt-32">
+        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-32">
             {/* Spotlight Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Main Top Spotlight */}
@@ -141,11 +140,7 @@ export default function HeroSection() {
                     Verify, trade, and showcase your assets in a premium ecosystem.
                 </p>
 
-                <p className="text-red-500 font-bold mb-4">
-                    Visual Debug: User is {user ? `Logged In (${user.id})` : 'Guest (Null)'}
-                </p>
-
-                <div className="flex flex-col md:flex-row gap-6 justify-center">
+                <div className="flex flex-col md:flex-row gap-6 justify-center animate-fade-in-up delay-300">
                     {user ? (
                         <Link
                             href="/market"
