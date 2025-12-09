@@ -35,7 +35,7 @@ export default function Header() {
     };
 
     return (
-        <header className="fixed z-50 flex justify-center pointer-events-none top-4 left-4 right-4 md:top-6 md:left-0 md:right-0">
+        <header className="fixed top-0 left-0 w-full z-50 pt-4 px-4 md:pt-6 flex flex-col items-center pointer-events-none">
             <div className="pointer-events-auto w-full md:max-w-4xl bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 group">
@@ -84,7 +84,7 @@ export default function Header() {
                         <button
                             className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all"
                         >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-platinum to-brand-platinum/50 overflow-hidden relative">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-platinum to-brand-platinum/50 overflow-hidden relative">
                                 <Image
                                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'Guest'}`}
                                     alt="User"
@@ -148,7 +148,7 @@ export default function Header() {
 
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="absolute top-full mt-4 left-4 right-4 bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl pointer-events-auto md:hidden flex flex-col gap-2 animate-fade-in-up">
+                <div className="pointer-events-auto w-full md:max-w-4xl mt-2 bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl md:hidden flex flex-col gap-2 animate-fade-in-up">
                     <Link href="/market" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MARKETPLACE</Link>
                     <Link href="/collection" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY COLLECTION</Link>
                     <Link href="/auctions" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">AUCTIONS</Link>
