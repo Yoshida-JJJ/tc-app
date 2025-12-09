@@ -15,8 +15,13 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
     const hasBackImage = item.images && item.images.length > 1;
 
     // Countdown Logic
+    // Countdown & Active State Logic
     const [timeLeft, setTimeLeft] = useState<string>('60:00');
+    const [isLiveActive, setIsLiveActive] = useState(isLiveMoment);
+
     useEffect(() => {
+        setIsLiveActive(isLiveMoment); // Sync with prop
+
         if (isLiveMoment) {
             const endTime = new Date().getTime() + 60 * 60 * 1000;
             const timer = setInterval(() => {
@@ -28,10 +33,13 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                     setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
                 } else {
                     setTimeLeft('00:00');
+                    setIsLiveActive(false); // Auto-expire visual effects
                     clearInterval(timer);
                 }
             }, 1000);
             return () => clearInterval(timer);
+        } else {
+            setIsLiveActive(false);
         }
     }, [isLiveMoment]);
 
@@ -44,7 +52,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
     const cardContent = (
         <motion.div
             className={`glass-panel rounded-xl overflow-hidden card-hover h-full flex flex-col relative ${isSold ? 'grayscale-[0.5]' : ''}`}
-            animate={isLiveMoment ? {
+            animate={isLiveActive ? {
                 boxShadow: [
                     "0 0 15px rgba(255, 215, 0, 0.2)",
                     "0 0 30px rgba(255, 215, 0, 0.5)",
@@ -62,7 +70,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 ease: "easeInOut"
             }}
             style={{
-                borderColor: isLiveMoment ? '#FFD700' : ''
+                borderColor: isLiveActive ? '#FFD700' : ''
             }}
         >
             {/* Image Section */}
@@ -84,7 +92,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                             </div>
                         )}
                         {/* Live Moment Inner Glow */}
-                        {isLiveMoment && (
+                        {isLiveActive && (
                             <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(255,215,0,0.3)] mix-blend-overlay pointer-events-none" />
                         )}
                     </div>
@@ -184,7 +192,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
             </div>
 
             {/* Live Moment Badge (Direct Positioning) */}
-            {isLiveMoment && (
+            {isLiveActive && (
                 <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 backdrop-blur-md z-[100] animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
                     LIVE

@@ -32,10 +32,13 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
     // Use prop if provided, otherwise fallback to variant (for backward compatibility or explicit override)
     const isLiveMoment = is_live_moment || variant === 'live-moment';
 
-    // Countdown Logic (Simulated for Debug, or static 59:59 start)
-    const [timeLeft, setTimeLeft] = useState<string>('59:59');
+    // Countdown & Active State Logic
+    const [timeLeft, setTimeLeft] = useState<string>('60:00');
+    const [isLiveActive, setIsLiveActive] = useState(isLiveMoment);
 
     useEffect(() => {
+        setIsLiveActive(isLiveMoment); // Sync with prop
+
         if (isLiveMoment) {
             // Simulate countdown from 60 mins
             const endTime = new Date().getTime() + 60 * 60 * 1000;
@@ -43,16 +46,20 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
             const timer = setInterval(() => {
                 const now = new Date().getTime();
                 const distance = endTime - now;
+
                 if (distance > 0) {
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                     setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
                 } else {
                     setTimeLeft('00:00');
+                    setIsLiveActive(false); // Auto-expire visual effects
                     clearInterval(timer);
                 }
             }, 1000);
             return () => clearInterval(timer);
+        } else {
+            setIsLiveActive(false);
         }
     }, [isLiveMoment]);
 
@@ -65,7 +72,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
     return (
         <motion.div
             className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-500 bg-brand-dark-light/50`}
-            animate={isLiveMoment ? {
+            animate={isLiveActive ? {
                 boxShadow: [
                     "0 0 15px rgba(255, 215, 0, 0.2)",
                     "0 0 30px rgba(255, 215, 0, 0.5)",
@@ -84,12 +91,12 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
             }}
             whileHover={{ scale: 1.02 }}
             style={{
-                borderColor: isLiveMoment ? '#FFD700' : 'rgba(255, 255, 255, 0.1)'
+                borderColor: isLiveActive ? '#FFD700' : 'rgba(255, 255, 255, 0.1)'
             }}
         >
 
             {/* Live Moment Badge */}
-            {isLiveMoment && (
+            {isLiveActive && (
                 <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none">
                     <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
@@ -118,7 +125,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                             <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">No Image</div>
                         )}
                         {/* Live Moment Inner Glow */}
-                        {isLiveMoment && (
+                        {isLiveActive && (
                             <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(255,215,0,0.3)] mix-blend-overlay pointer-events-none" />
                         )}
                     </div>
@@ -135,7 +142,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                             />
 
                             {/* Live Moment Stats Overlay */}
-                            {isLiveMoment && (
+                            {isLiveActive && (
                                 <div className="absolute inset-0 bg-black/60 flex flex-col justify-center items-center p-4 text-center">
                                     <div className="border-2 border-brand-gold/50 p-3 rounded-lg bg-black/40 backdrop-blur-sm w-full">
                                         <h4 className="text-brand-gold font-heading font-bold text-lg mb-2 tracking-widest border-b border-brand-gold/30 pb-1">MOMENT DATA</h4>
