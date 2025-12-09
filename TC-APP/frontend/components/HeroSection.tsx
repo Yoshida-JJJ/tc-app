@@ -140,27 +140,25 @@ export default function HeroSection() {
                     Verify, trade, and showcase your assets in a premium ecosystem.
                 </p>
 
-                <div className="flex flex-col md:flex-row gap-6 justify-center">
+                <div className="flex flex-col md:flex-row gap-6 justify-center border border-white/10 p-4 rounded-xl">
                     {user ? (
                         <Link
                             href="/market"
-                            className="group relative px-8 py-4 bg-brand-blue text-white font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                            className="group relative px-8 py-4 bg-blue-600 text-white font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                             <span className="relative z-10">EXPLORE MARKETPLACE</span>
                         </Link>
                     ) : (
                         <>
                             <Link
                                 href="/register"
-                                className="group relative px-8 py-4 bg-brand-gold text-brand-dark font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                                className="group relative px-8 py-4 bg-yellow-500 text-black font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                                 <span className="relative z-10">SIGN UP NOW</span>
                             </Link>
                             <Link
                                 href="/login"
-                                className="px-8 py-4 bg-white/5 text-white font-bold rounded-full border border-white/10 hover:bg-white/10 transition-all hover:scale-105 backdrop-blur-md"
+                                className="px-8 py-4 bg-white/10 text-white font-bold rounded-full border border-white/20 hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md flex items-center justify-center"
                             >
                                 SIGN IN
                             </Link>
