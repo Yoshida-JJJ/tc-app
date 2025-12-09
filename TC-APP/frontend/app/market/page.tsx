@@ -36,41 +36,84 @@ function MarketPageContent() {
             setLoading(true);
             try {
                 const supabase = createClient();
-                let query = supabase
-                    .from('listing_items')
-                    .select('*, catalog:card_catalogs!inner(*)')
-                    .eq('status', 'Active'); // Only show Active listings in Marketplace
+                const now = new Date();
+                const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
+                // 1. Fetch Active Live Moments
+                const { data: activeMoments } = await supabase
+                    .from('live_moments')
+                    .select('player_name')
+                    .gt('created_at', oneHourAgo);
+
+                const activePlayers = Array.from(new Set(activeMoments?.map(m => m.player_name) || []));
+
+                // Helper to build base query with filters
+                const buildBaseQuery = () => {
+                    let q = supabase
+                        .from('listing_items')
+                        .select('*, catalog:card_catalogs!inner(*)')
+                        .eq('status', 'Active');
+
+                    if (selectedTeam) {
+                        q = q.eq('catalog.team', selectedTeam);
+                    }
+                    return q;
+                };
+
+                let finalData: any[] = [];
+
+                if (sortOrder === 'newest' && activePlayers.length > 0) {
+                    // --- Priority Logic ---
+
+                    // A. Fetch Priority Listings (Matches Active Players)
+                    let pQuery = buildBaseQuery()
+                        .in('catalog.player_name', activePlayers) // Requires !inner on catalog
+                        .order('created_at', { ascending: false });
+
+                    // B. Fetch Regular Listings (Non-Active Players)
+                    let rQuery = buildBaseQuery()
+                        .not('catalog.player_name', 'in', `(${activePlayers.map(p => `"${p}"`).join(',')})`) // Exclude active players
+                        .order('created_at', { ascending: false });
+
+                    // Execute in parallel
+                    const [pRes, rRes] = await Promise.all([pQuery, rQuery]);
+
+                    if (pRes.error) throw pRes.error;
+                    if (rRes.error) throw rRes.error;
+
+                    finalData = [...(pRes.data || []), ...(rRes.data || [])];
+
+                } else {
+                    // --- Standard Logic ---
+                    let query = buildBaseQuery();
+
+                    if (sortOrder === 'newest') {
+                        query = query.order('created_at', { ascending: false });
+                    } else if (sortOrder === 'price_asc') {
+                        query = query.order('price', { ascending: true, nullsFirst: false });
+                    } else if (sortOrder === 'price_desc') {
+                        query = query.order('price', { ascending: false, nullsFirst: false });
+                    }
+
+                    const { data, error } = await query;
+                    if (error) throw error;
+                    finalData = data || [];
+                }
+
+                // Client-side Text Search (as before)
                 if (debouncedSearch) {
-                    // Search in catalog fields. Note: This requires the joined table to be filtered.
-                    // Supabase JS client allows filtering on joined tables with dot notation if !inner is used.
-                    // However, OR across multiple columns in joined table is tricky.
-                    // For simplicity, let's search by player_name.
-                    query = query.ilike('catalog.player_name', `%${debouncedSearch}%`);
+                    const lowerSearch = debouncedSearch.toLowerCase();
+                    finalData = finalData.filter((item: any) =>
+                        item.catalog.player_name.toLowerCase().includes(lowerSearch) ||
+                        item.catalog.manufacturer.toLowerCase().includes(lowerSearch) ||
+                        item.catalog.series_name.toLowerCase().includes(lowerSearch)
+                    );
                 }
 
-                if (selectedTeam) {
-                    query = query.eq('catalog.team', selectedTeam);
-                }
+                setListings(finalData);
 
-                if (sortOrder === 'newest') {
-                    query = query.order('created_at', { ascending: false });
-                } else if (sortOrder === 'price_asc') {
-                    query = query.order('price', { ascending: true, nullsFirst: false });
-                } else if (sortOrder === 'price_desc') {
-                    query = query.order('price', { ascending: false, nullsFirst: false });
-                }
-
-                const { data, error } = await query;
-
-                if (error) {
-                    throw error;
-                }
-
-                // Transform data to match ListingItem type if necessary
-                // The type definition expects catalog to be nested, which Supabase returns.
-                setListings(data as any); // Type assertion might be needed depending on generated types
             } catch (err) {
+                console.error(err);
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');
             } finally {
                 setLoading(false);
