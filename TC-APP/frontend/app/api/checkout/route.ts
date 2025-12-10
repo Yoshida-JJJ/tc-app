@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
                 listingId: listingId,
                 orderId: order.id, // Store our internal order ID to update it later
             },
-            success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders/success?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
+            success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders/${order.id}/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${listingId}?canceled=true`,
         });
 
