@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+import { sendWelcomeEmail } from '../actions/send-email';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -34,6 +35,9 @@ export default function RegisterPage() {
             if (error) {
                 throw error;
             }
+
+            // Send Welcome Email
+            await sendWelcomeEmail(email, name);
 
             // Redirect to login page after successful registration
             router.push('/login?registered=true');
