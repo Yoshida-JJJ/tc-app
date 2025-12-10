@@ -32,24 +32,56 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Cannot purchase your own listing' }, { status: 400 });
         }
 
-        // 3. Create Pending Order in DB
-        // We use upsert or plain insert. Since logic should be one pending order per user/listing combo ideally,
-        // but for now simple insert. RLS allows buyers to insert orders.
-        const { data: order, error: orderError } = await supabase
+        // 3. Create or Reuse Pending Order
+        // Check if an order already exists for this listing
+        const { data: existingOrder, error: fetchOrderError } = await supabase
             .from('orders')
-            .insert({
-                listing_id: listingId,
-                buyer_id: user.id,
-                payment_method_id: 'stripe_checkout', // placeholder until payment
-                total_amount: listing.price,
-                status: 'pending' // pending until webhook confirms
-            })
-            .select()
-            .single();
+            .select('*')
+            .eq('listing_id', listingId)
+            .maybeSingle();
 
-        if (orderError) {
-            console.error('Order creation failed:', orderError);
-            return NextResponse.json({ error: 'Failed to create order record' }, { status: 500 });
+        let order = existingOrder;
+
+        if (existingOrder) {
+            // If order exists
+            if (existingOrder.status === 'paid' || existingOrder.status === 'completed') {
+                return NextResponse.json({ error: 'This item has already been sold.' }, { status: 400 });
+            }
+
+            // If it's someone else's pending order (and RLS allowed us to see it? RLS usually hides it)
+            // If RLS works, we only see OUR orders.
+            // But if listing_id is unique, and we can't see the order, the INSERT below will fail with constraint error.
+            if (existingOrder.buyer_id !== user.id) {
+                // Should technically typically invalid if we can see it but it's not ours (depends on RLS)
+                return NextResponse.json({ error: 'Item is currently in a transaction.' }, { status: 400 });
+            }
+
+            // If it's our pending order, we reuse it.
+            // Optionally update timestamp or total_amount if price changed?
+            // For now, just reuse.
+        } else {
+            // No visible order found. Try to insert.
+            const { data: newOrder, error: insertError } = await supabase
+                .from('orders')
+                .insert({
+                    listing_id: listingId,
+                    buyer_id: user.id,
+                    payment_method_id: 'stripe_checkout',
+                    total_amount: listing.price,
+                    status: 'pending'
+                })
+                .select()
+                .single();
+
+            if (insertError) {
+                // If insert failed, it might be a unique constraint violation from a HIDDEN order (someone else's)
+                if (insertError.code === '23505') { // Unique violation
+                    return NextResponse.json({ error: 'Item is currently reserved by another user.' }, { status: 409 });
+                }
+                console.error('Order creation failed:', insertError);
+                return NextResponse.json({ error: 'Failed to create order record' }, { status: 500 });
+            }
+            order = newOrder;
         }
 
         // 4. Create Stripe Checkout Session
