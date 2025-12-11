@@ -29,7 +29,7 @@ interface ShowcaseItemProps {
     onToggleDisplay?: (id: string, currentStatus: string) => void;
 }
 
-export default function ShowcaseCard({ item, variant = 'default', is_live_moment, onDelete, onCancel, onToggleDisplay }: ShowcaseItemProps) {
+export default function ShowcaseCard({ item, type, variant = 'default', is_live_moment, onDelete, onCancel, onToggleDisplay }: ShowcaseItemProps) {
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
     // Use prop if provided, otherwise fallback to variant (for backward compatibility or explicit override)
@@ -214,7 +214,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
 
                 {/* Status & Price */}
                 <div className="flex justify-between items-center min-h-[20px]">
-                    {item.type === 'purchased' ? (
+                    {type === 'purchased' ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full border bg-green-500/10 border-green-500/30 text-green-400 font-medium tracking-wide">
                             PURCHASED
                         </span>
