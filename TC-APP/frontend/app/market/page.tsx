@@ -51,7 +51,7 @@ function MarketPageContent() {
                 const buildBaseQuery = () => {
                     let q = supabase
                         .from('listing_items')
-                        .select('*, catalog:card_catalogs!inner(*)')
+                        .select('*, catalog:card_catalogs(*)')
                         .eq('status', 'Active');
 
                     if (selectedTeam) {
@@ -66,13 +66,16 @@ function MarketPageContent() {
                     // --- Priority Logic ---
 
                     // A. Fetch Priority Listings (Matches Active Players)
+                    // Does implicit inner join on catalog if we filter by catalog.player_name
                     let pQuery = buildBaseQuery()
-                        .in('catalog.player_name', activePlayers) // Requires !inner on catalog
+                        .in('catalog.player_name', activePlayers)
                         .order('created_at', { ascending: false });
 
-                    // B. Fetch Regular Listings (Non-Active Players)
+                    // B. Fetch Regular Listings (Non-Active Players OR No Catalog)
+                    // We need to be careful not to exclude null catalogs when using "not.in" on catalog field
+                    const activePlayersList = `(${activePlayers.map(p => `"${p}"`).join(',')})`;
                     let rQuery = buildBaseQuery()
-                        .not('catalog.player_name', 'in', `(${activePlayers.map(p => `"${p}"`).join(',')})`) // Exclude active players
+                        .or(`catalog_id.is.null,catalog.player_name.not.in.${activePlayersList}`)
                         .order('created_at', { ascending: false });
 
                     // Execute in parallel
