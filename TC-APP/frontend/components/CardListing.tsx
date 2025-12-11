@@ -153,11 +153,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                         <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-brand-blue/20 text-brand-blue border border-brand-blue/30">
                             {item.team}
                         </span>
-                        {item.catalog?.rarity && (
-                            <span className="text-[10px] text-brand-platinum/60 uppercase tracking-wider font-medium">
-                                {item.catalog.rarity}
-                            </span>
-                        )}
+
                     </div>
 
                     <h2 className="font-heading text-lg font-bold text-white mb-1 group-hover:text-brand-blue-glow transition-colors truncate">
