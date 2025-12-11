@@ -1,5 +1,5 @@
 export type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
-export type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions";
+export type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions" | "SamuraiJapan" | "Other";
 export type Rarity = "Common" | "Rare" | "Super Rare" | "Parallel" | "Autograph" | "Patch";
 
 export interface CardCatalog {
@@ -43,7 +43,18 @@ export interface ListingItem {
     condition_grading: ConditionGrading;
     seller_id: string;
     status: string;
-    catalog: CardCatalog;
-    seller?: Profile;
+    // Decoupled / Manual Entry Fields
+    player_name?: string | null;
+    team?: string | null;
+    year?: number | null;
+    manufacturer?: string | null;
+    variation?: string | null;
+    serial_number?: string | null;
+    is_rookie?: boolean;
+    is_autograph?: boolean;
+    description?: string | null;
+    condition_rating?: string | null;
+    catalog: CardCatalog | null; // Can now be null
+    seller: Profile;
     is_live_moment?: boolean;
 }

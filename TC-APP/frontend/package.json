@@ -9,15 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.45",
+    "@hookform/resolvers": "^5.2.2",
     "@react-email/components": "^1.0.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.86.2",
+    "ai": "^5.0.108",
     "framer-motion": "^12.23.25",
     "next": "^16.0.7",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-hook-form": "^7.68.0",
     "resend": "^6.5.2",
-    "stripe": "^20.0.0"
+    "stripe": "^20.0.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/node": "^20",

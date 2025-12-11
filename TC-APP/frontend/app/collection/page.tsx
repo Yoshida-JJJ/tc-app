@@ -24,7 +24,12 @@ interface ListingItem {
         manufacturer: string;
         series_name?: string;
         team: string;
-    };
+    } | null;
+    // Decoupled fields
+    player_name?: string;
+    team?: string;
+    year?: number;
+    manufacturer?: string;
 }
 
 interface OrderItem {
@@ -359,189 +364,185 @@ function MyPageContent() {
                             </>
                         )}
 
-                        {
-                            activeTab === 'listings' && (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {myListings.length === 0 ? (
-                                        <div className="text-center py-12 text-brand-platinum/50">
-                                            <p>No active sales in progress.</p>
-                                            <p className="text-sm mt-2">Items listed for sale are in your Workspace.</p>
-                                        </div>
-                                    ) : (
-                                        myListings.map(item => (
-                                            <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
-                                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
-                                                    <img src={item.images[0]} className="w-full h-full object-cover" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <h3 className="text-white font-bold">{item.catalog.player_name}</h3>
-                                                            <p className="text-brand-platinum/60 text-sm">{item.status}</p>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending') && (
-                                                                <button
-                                                                    onClick={() => handleShipItem(item.id)}
-                                                                    className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
-                                                                >
-                                                                    Ship Item
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
+                        {activeTab === 'listings' && (
+                            <div className="grid grid-cols-1 gap-4">
+                                {myListings.length === 0 ? (
+                                    <div className="text-center py-12 text-brand-platinum/50">
+                                        <p>No active sales in progress.</p>
+                                        <p className="text-sm mt-2">Items listed for sale are in your Workspace.</p>
+                                    </div>
+                                ) : (
+                                    myListings.map(item => (
+                                        <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
+                                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
+                                                <img src={item.images[0]} className="w-full h-full object-cover" />
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            )
-                        }
-
-                        {
-                            activeTab === 'orders' && (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {myOrders.length === 0 ? (
-                                        <div className="text-center py-12 text-brand-platinum/50">
-                                            <p>No active purchases in progress.</p>
-                                        </div>
-                                    ) : (
-                                        myOrders.map(order => (
-                                            <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
-                                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
-                                                    <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <h3 className="text-white font-bold">{order.listing?.catalog.player_name}</h3>
-                                                            <p className="text-brand-platinum/60 text-sm">
-                                                                {order.listing?.status === 'Shipped' ? 'Shipped - On the way' :
-                                                                    order.listing?.status === 'Completed' ? 'Delivered & Completed' :
-                                                                        order.listing?.status === 'AwaitingShipment' ? 'Awaiting Shipment' :
-                                                                            order.listing?.status === 'TransactionPending' ? 'Transaction Pending' :
-                                                                                'Purchased'}
-                                                            </p>
-                                                        </div>
-                                                        {order.listing?.status === 'Shipped' ? (
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-white font-bold">{item.player_name || item.catalog?.player_name || 'Unknown Item'}</h3>
+                                                        <p className="text-brand-platinum/60 text-sm">{item.status}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending') && (
                                                             <button
-                                                                onClick={() => handleReceiveOrder(order.listing!.id)}
-                                                                className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-gold hover:bg-brand-gold-light rounded-lg transition-colors shadow-lg shadow-brand-gold/20"
+                                                                onClick={() => handleShipItem(item.id)}
+                                                                className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
                                                             >
-                                                                Order Received
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                disabled
-                                                                className="px-3 py-1 text-xs font-bold text-brand-platinum/40 bg-brand-dark-light border border-brand-platinum/10 rounded-lg cursor-not-allowed"
-                                                            >
-                                                                Waiting for Shipment
+                                                                Ship Item
                                                             </button>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'orders' && (
+                            <div className="grid grid-cols-1 gap-4">
+                                {myOrders.length === 0 ? (
+                                    <div className="text-center py-12 text-brand-platinum/50">
+                                        <p>No active purchases in progress.</p>
+                                    </div>
+                                ) : (
+                                    myOrders.map(order => (
+                                        <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
+                                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
+                                                <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-white font-bold">{order.listing?.player_name || order.listing?.catalog?.player_name || 'Unknown Item'}</h3>
+                                                        <p className="text-brand-platinum/60 text-sm">
+                                                            {order.listing?.status === 'Shipped' ? 'Shipped - On the way' :
+                                                                order.listing?.status === 'Completed' ? 'Delivered & Completed' :
+                                                                    order.listing?.status === 'AwaitingShipment' ? 'Awaiting Shipment' :
+                                                                        order.listing?.status === 'TransactionPending' ? 'Transaction Pending' :
+                                                                            'Purchased'}
+                                                        </p>
+                                                    </div>
+                                                    {order.listing?.status === 'Shipped' ? (
+                                                        <button
+                                                            onClick={() => handleReceiveOrder(order.listing!.id)}
+                                                            className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-gold hover:bg-brand-gold-light rounded-lg transition-colors shadow-lg shadow-brand-gold/20"
+                                                        >
+                                                            Order Received
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            disabled
+                                                            className="px-3 py-1 text-xs font-bold text-brand-platinum/40 bg-brand-dark-light border border-brand-platinum/10 rounded-lg cursor-not-allowed"
+                                                        >
+                                                            Waiting for Shipment
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div>
+                                <div className="flex gap-4 mb-6 border-b border-brand-platinum/10 pb-4">
+                                    <button
+                                        onClick={() => setHistoryTab('sold')}
+                                        className={`text-sm font-bold transition-colors ${historyTab === 'sold' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
+                                            }`}
+                                    >
+                                        Sold History
+                                    </button>
+                                    <button
+                                        onClick={() => setHistoryTab('purchased')}
+                                        className={`text-sm font-bold transition-colors ${historyTab === 'purchased' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
+                                            }`}
+                                    >
+                                        Purchase History
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    {historyTab === 'sold' ? (
+                                        historySold.length === 0 ? (
+                                            <div className="text-center py-12 text-brand-platinum/50">
+                                                <p>No sold items history.</p>
+                                            </div>
+                                        ) : (
+                                            historySold.map(item => (
+                                                <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
+                                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
+                                                        <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <h3 className="text-white font-bold">{item.player_name || item.catalog?.player_name || 'Unknown Item'}</h3>
+                                                                <p className="text-brand-platinum/60 text-sm">Sold - Completed</p>
+                                                            </div>
+                                                            <div className="text-brand-gold font-bold">
+                                                                ¥{item.price?.toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )
+                                    ) : (
+                                        historyPurchased.length === 0 ? (
+                                            <div className="text-center py-12 text-brand-platinum/50">
+                                                <p>No purchase history.</p>
+                                            </div>
+                                        ) : (
+                                            historyPurchased.map(order => (
+                                                <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
+                                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
+                                                        <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <h3 className="text-white font-bold">{order.listing?.player_name || order.listing?.catalog?.player_name || 'Unknown Item'}</h3>
+                                                                <p className="text-brand-platinum/60 text-sm">Purchased - Completed</p>
+                                                            </div>
+                                                            <div className="text-brand-gold font-bold">
+                                                                ¥{order.listing?.price?.toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )
                                     )}
                                 </div>
-                            )
-                        }
-
-                        {
-                            activeTab === 'history' && (
-                                <div>
-                                    <div className="flex gap-4 mb-6 border-b border-brand-platinum/10 pb-4">
-                                        <button
-                                            onClick={() => setHistoryTab('sold')}
-                                            className={`text-sm font-bold transition-colors ${historyTab === 'sold' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
-                                                }`}
-                                        >
-                                            Sold History
-                                        </button>
-                                        <button
-                                            onClick={() => setHistoryTab('purchased')}
-                                            className={`text-sm font-bold transition-colors ${historyTab === 'purchased' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
-                                                }`}
-                                        >
-                                            Purchase History
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {historyTab === 'sold' ? (
-                                            historySold.length === 0 ? (
-                                                <div className="text-center py-12 text-brand-platinum/50">
-                                                    <p>No sold items history.</p>
-                                                </div>
-                                            ) : (
-                                                historySold.map(item => (
-                                                    <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
-                                                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
-                                                            <img src={item.images[0]} className="w-full h-full object-cover" />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="text-white font-bold">{item.catalog.player_name}</h3>
-                                                                    <p className="text-brand-platinum/60 text-sm">Sold - Completed</p>
-                                                                </div>
-                                                                <div className="text-brand-gold font-bold">
-                                                                    ¥{item.price?.toLocaleString()}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )
-                                        ) : (
-                                            historyPurchased.length === 0 ? (
-                                                <div className="text-center py-12 text-brand-platinum/50">
-                                                    <p>No purchase history.</p>
-                                                </div>
-                                            ) : (
-                                                historyPurchased.map(order => (
-                                                    <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
-                                                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
-                                                            <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="text-white font-bold">{order.listing?.catalog.player_name}</h3>
-                                                                    <p className="text-brand-platinum/60 text-sm">Purchased - Completed</p>
-                                                                </div>
-                                                                <div className="text-brand-gold font-bold">
-                                                                    ¥{order.listing?.price?.toLocaleString()}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-                            )
-                        }
+                            </div>
+                        )}
                     </div >
                 </div >
-            </div >
-            <Footer />
-            <AddToShowcaseModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onAdded={fetchData}
-            />
-
-            {showAnimation && (
-                <PurchaseAnimation
-                    onComplete={() => {
-                        setShowAnimation(false);
-                        fetchData();
-                    }}
+                <Footer />
+                <AddToShowcaseModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onAdded={fetchData}
                 />
-            )}
-        </div >
+
+                {
+                    showAnimation && (
+                        <PurchaseAnimation
+                            onComplete={() => {
+                                setShowAnimation(false);
+                                fetchData();
+                            }}
+                        />
+                    )
+                }
+            </div>
+        </div>
     );
 }
 

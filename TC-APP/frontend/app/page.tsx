@@ -92,15 +92,24 @@ function HomeContent() {
         // Client-side filtering for Search and Team (since simple join filtering is complex in JS client without specific setup)
         if (debouncedSearch) {
           const lowerSearch = debouncedSearch.toLowerCase();
-          filteredData = filteredData.filter(item =>
-            item.catalog.player_name.toLowerCase().includes(lowerSearch) ||
-            item.catalog.manufacturer.toLowerCase().includes(lowerSearch) ||
-            item.catalog.series_name.toLowerCase().includes(lowerSearch)
-          );
+          filteredData = filteredData.filter(item => {
+            const playerName = item.player_name || item.catalog?.player_name || '';
+            const manufacturer = item.manufacturer || item.catalog?.manufacturer || '';
+            const series = item.variation || item.catalog?.series_name || '';
+
+            return (
+              playerName.toLowerCase().includes(lowerSearch) ||
+              manufacturer.toLowerCase().includes(lowerSearch) ||
+              series.toLowerCase().includes(lowerSearch)
+            );
+          });
         }
 
         if (selectedTeam) {
-          filteredData = filteredData.filter(item => item.catalog.team === selectedTeam);
+          filteredData = filteredData.filter(item => {
+            const team = item.team || item.catalog?.team;
+            return team === selectedTeam;
+          });
         }
 
         setListings(filteredData);
