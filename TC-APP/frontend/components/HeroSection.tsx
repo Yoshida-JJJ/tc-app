@@ -70,7 +70,7 @@ export default function HeroSection() {
                                 {featuredCard.images?.[0] && (
                                     <img
                                         src={featuredCard.images[0]}
-                                        alt={featuredCard.catalog.player_name}
+                                        alt={featuredCard.player_name || featuredCard.catalog?.player_name || 'Card Image'}
                                         className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
                                     />
                                 )}
@@ -86,13 +86,13 @@ export default function HeroSection() {
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-brand-gold text-xs font-bold tracking-widest mb-1 uppercase">
-                                                {featuredCard.catalog.rarity || 'PREMIUM'}
+                                                {featuredCard.catalog?.rarity || 'PREMIUM'}
                                             </p>
                                             <h3 className="text-white font-heading text-xl font-bold leading-tight">
-                                                {featuredCard.catalog.player_name}
+                                                {featuredCard.player_name || featuredCard.catalog?.player_name || 'Unknown Player'}
                                             </h3>
                                             <p className="text-brand-platinum/80 text-xs mt-1">
-                                                {featuredCard.catalog.year} {featuredCard.catalog.manufacturer}
+                                                {featuredCard.year || featuredCard.catalog?.year || ''} {featuredCard.manufacturer || featuredCard.catalog?.manufacturer || ''}
                                             </p>
                                         </div>
                                         <div className="text-right">
