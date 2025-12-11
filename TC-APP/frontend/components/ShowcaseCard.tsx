@@ -236,7 +236,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                                     } `}>
                                     {item.status === 'Sold' || item.status === 'Completed' || item.status === 'Delivered' ? 'SOLD' :
                                         item.status === 'Display' ? 'DISPLAY' :
-                                            item.status.toUpperCase()}
+                                            (item.status || '').toUpperCase()}
                                 </span>
                             )}
                         </>
