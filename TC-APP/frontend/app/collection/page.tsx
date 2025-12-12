@@ -45,7 +45,7 @@ function MyPageContent() {
 
     const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'history'>('showcase');
     const [historyTab, setHistoryTab] = useState<'sold' | 'purchased'>('sold');
-    const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display' | 'Sold'>('All');
+    const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display' | 'Purchased'>('All');
     const [showcaseItems, setShowcaseItems] = useState<any[]>([]);
     const [myListings, setMyListings] = useState<ListingItem[]>([]);
     const [myOrders, setMyOrders] = useState<OrderItem[]>([]);
@@ -108,7 +108,7 @@ function MyPageContent() {
             ) || [];
 
             const workspaceOrders = ordersData?.filter(order =>
-                order.listing?.status === 'Delivered'
+                ['Delivered', 'Completed'].includes(order.listing?.status || '')
             ) || [];
 
             const aggregated = [
@@ -226,13 +226,58 @@ function MyPageContent() {
         fetchData();
     }, []);
 
+    const handleCloneToDisplay = async (id: string) => {
+        if (!confirm('Add this purchased item to your showcase?')) return;
+
+        const supabase = createClient();
+        try {
+            // 1. Fetch original item
+            const { data: sourceItem, error: fetchError } = await supabase
+                .from('listing_items')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError || !sourceItem) throw new Error('Failed to fetch item data');
+
+            // 2. Prepare new item data
+            const newItem = {
+                ...sourceItem,
+                id: undefined, // Let DB generate new ID
+                created_at: undefined,
+                updated_at: undefined,
+                seller_id: user.id, // I am the new owner
+                status: 'Display', // Set to Display
+                // Keep other fields (player_name, images, etc.)
+                // Maybe clear price? or keep as reference value? Let's keep it.
+            };
+
+            // 3. Insert new item
+            const { error: insertError } = await supabase
+                .from('listing_items')
+                .insert(newItem);
+
+            if (insertError) throw insertError;
+
+            fetchData();
+        } catch (error) {
+            console.error('Failed to clone item:', error);
+            alert('Failed to add to showcase');
+        }
+    };
+
+    /**
+     * Helper to check if a purchased item is already displayed to avoid duplicates?
+     * For now, simpler to just allow cloning.
+     */
+
     // Filter Logic for Workspace
     const filteredShowcaseItems = showcaseItems.filter(item => {
         if (filter === 'All') return true;
         if (filter === 'Draft') return item.status === 'Draft';
         if (filter === 'Active') return item.status === 'Active';
         if (filter === 'Display') return item.status === 'Display';
-        if (filter === 'Sold') return ['Sold', 'Shipped', 'Delivered', 'Completed'].includes(item.status); // Include all post-sale statuses
+        if (filter === 'Purchased') return ['Sold', 'Shipped', 'Delivered', 'Completed'].includes(item.status); // Include all post-sale statuses
         return true;
     });
 
@@ -322,7 +367,7 @@ function MyPageContent() {
                             <>
                                 {/* Filter Pills */}
                                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                                    {['All', 'Draft', 'Active', 'Display', 'Sold'].map((f) => (
+                                    {['All', 'Draft', 'Active', 'Display', 'Purchased'].map((f) => (
                                         <button
                                             key={f}
                                             onClick={() => setFilter(f as any)}
@@ -341,9 +386,11 @@ function MyPageContent() {
                                         <ShowcaseCard
                                             key={idx}
                                             item={item}
+                                            type={item.type as any} // Pass type 'listed' or 'purchased'
                                             onDelete={handleDeleteCollectionItem}
                                             onCancel={handleCancelListing}
                                             onToggleDisplay={handleToggleDisplay}
+                                            onClone={handleCloneToDisplay} // Pass Clone Handler
                                             is_live_moment={item.is_live_moment || isDebugLive}
                                         />
                                     ))}

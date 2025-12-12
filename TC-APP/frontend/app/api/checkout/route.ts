@@ -4,7 +4,7 @@ import { createClient } from '../../../utils/supabase/server';
 
 export async function POST(req: NextRequest) {
     try {
-        const { listingId, returnUrl } = await req.json();
+        const { listingId, returnUrl, shippingDetails } = await req.json();
         const supabase = await createClient();
 
         // 1. Auth Check
@@ -57,8 +57,15 @@ export async function POST(req: NextRequest) {
             }
 
             // If it's our pending order, we reuse it.
-            // Optionally update timestamp or total_amount if price changed?
-            // For now, just reuse.
+            // Update shipping details if provided
+            if (shippingDetails) {
+                await supabase.from('orders').update({
+                    shipping_name: shippingDetails.name,
+                    shipping_postal_code: shippingDetails.postalCode,
+                    shipping_address: shippingDetails.address,
+                    shipping_phone: shippingDetails.phone
+                }).eq('id', existingOrder.id);
+            }
         } else {
             // No visible order found. Try to insert.
             const { data: newOrder, error: insertError } = await supabase
@@ -68,7 +75,11 @@ export async function POST(req: NextRequest) {
                     buyer_id: user.id,
                     payment_method_id: 'stripe_checkout',
                     total_amount: listing.price,
-                    status: 'pending'
+                    status: 'pending',
+                    shipping_name: shippingDetails?.name,
+                    shipping_postal_code: shippingDetails?.postalCode,
+                    shipping_address: shippingDetails?.address,
+                    shipping_phone: shippingDetails?.phone
                 })
                 .select()
                 .single();

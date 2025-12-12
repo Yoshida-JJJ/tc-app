@@ -33,6 +33,31 @@ export interface Profile {
     postal_code?: string;
     address_line1?: string;
     address_line2?: string;
+    real_name_kana?: string;
+}
+
+export interface BankAccount {
+    id: string;
+    user_id: string;
+    bank_name: string;
+    bank_code?: string;
+    branch_name: string;
+    branch_code?: string;
+    account_type: 'ordinary' | 'current';
+    account_number: string;
+    account_holder_name: string;
+    created_at: string;
+}
+
+export interface Payout {
+    id: string;
+    user_id: string;
+    amount: number;
+    fee: number;
+    payout_amount?: number;
+    status: 'pending' | 'paid' | 'rejected';
+    created_at: string;
+    processed_at?: string;
 }
 
 export interface ListingItem {

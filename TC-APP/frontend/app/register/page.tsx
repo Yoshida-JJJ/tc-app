@@ -76,7 +76,7 @@ export default function RegisterPage() {
 
                             <div>
                                 <label htmlFor="name" className="block text-sm font-medium text-brand-platinum mb-2">
-                                    Full Name
+                                    Nickname
                                 </label>
                                 <input
                                     id="name"
@@ -86,7 +86,7 @@ export default function RegisterPage() {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
-                                    placeholder="John Doe"
+                                    placeholder="CardMaster2024"
                                 />
                             </div>
 

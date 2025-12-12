@@ -27,9 +27,10 @@ interface ShowcaseItemProps {
     onDelete?: (id: string) => void;
     onCancel?: (id: string) => void;
     onToggleDisplay?: (id: string, currentStatus: string) => void;
+    onClone?: (id: string) => void;
 }
 
-export default function ShowcaseCard({ item, type, variant = 'default', is_live_moment, onDelete, onCancel, onToggleDisplay }: ShowcaseItemProps) {
+export default function ShowcaseCard({ item, type, variant = 'default', is_live_moment, onDelete, onCancel, onToggleDisplay, onClone }: ShowcaseItemProps) {
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
     // Use prop if provided, otherwise fallback to variant (for backward compatibility or explicit override)
@@ -246,13 +247,17 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                 {/* Action Buttons Row */}
                 <div className="relative z-20 flex items-center justify-end gap-2 pt-3 mt-1 border-t border-brand-platinum/10">
                     {/* Toggle Display Status Button */}
-                    {(item.status === 'Draft' || item.status === 'Display' || item.status === 'Active') && onToggleDisplay && (
+                    {((item.status === 'Draft' || item.status === 'Display' || item.status === 'Active') && onToggleDisplay) || (type === 'purchased' && onClone) ? (
                         <div className="group/tooltip relative">
                             <button
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    onToggleDisplay(item.id, item.status || '');
+                                    if (type === 'purchased' && onClone) {
+                                        onClone(item.id);
+                                    } else if (onToggleDisplay) {
+                                        onToggleDisplay(item.id, item.status || '');
+                                    }
                                 }}
                                 className={`p-2 rounded-lg border transition-all duration-300 ${item.status === 'Display'
                                     ? 'bg-brand-blue/10 border-brand-blue/40 text-brand-blue hover:bg-brand-blue/20 hover:border-brand-blue'
@@ -267,14 +272,14 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                             </button>
                             <div className="absolute center-x bottom-full mb-2 px-2 py-1 bg-brand-dark border border-brand-platinum/20 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none whitespace-nowrap transition-opacity duration-200 z-50">
                                 {item.status === 'Display' ? "非公開にする" :
-                                    item.status === 'Active' ? "Displayに変更" :
-                                        "公開する"}
+                                    (item.status === 'Active' ? "Displayに変更" :
+                                        (type === 'purchased' ? "Displayに追加 (Clone)" : "公開する"))}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
-                    {/* List Button (For Draft/Display) */}
-                    {(item.status === 'Draft' || item.status === 'Display') && (
+                    {/* List Button (For Draft/Display OR Purchased) */}
+                    {(item.status === 'Draft' || item.status === 'Display' || type === 'purchased') && (
                         <Link
                             href={`/sell?source=collection&id=${item.id}`}
                             className="group/tooltip relative p-2 bg-brand-gold/10 hover:bg-brand-gold/20 text-brand-gold rounded-lg border border-brand-gold/30 hover:border-brand-gold/50 transition-all duration-300"

@@ -150,7 +150,9 @@ function SellContent() {
                 try {
                     const { data: listingData } = await supabase.from('listing_items').select('*').eq('id', sourceId).single();
                     if (listingData) {
-                        setIsEditing(true);
+                        // Resell Logic: If I am not the seller, treat as New Listing (Clone data, but INSERT new)
+                        // If I AM the seller, treat as Edit (UPDATE existing)
+                        setIsEditing(listingData.seller_id === user.id);
                         setHasAnalyzed(true); // Editing implies analysis/data exists
                         reset({
                             playerName: listingData.player_name || '',

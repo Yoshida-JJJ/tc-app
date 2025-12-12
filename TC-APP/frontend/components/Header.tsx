@@ -111,6 +111,14 @@ export default function Header() {
                                         <Link href="/collection" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
                                             My Collection
                                         </Link>
+                                        <Link href="/payouts" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                                                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                                                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+                                            </svg>
+                                            Payouts (Using Wallet)
+                                        </Link>
                                         <button
                                             onClick={handleSignOut}
                                             className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 transition-colors"
@@ -165,6 +173,7 @@ export default function Header() {
                     {user && (
                         <>
                             <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
+                            <Link href="/payouts" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">PAYOUTS & EARNINGS</Link>
                             <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
                         </>
                     )}

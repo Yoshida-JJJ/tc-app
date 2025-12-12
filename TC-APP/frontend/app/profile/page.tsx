@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+import { getAvailableBalance } from '../../app/actions/payout';
 // import { createClient } from '@/utils/supabase/client';
 
 export default function ProfilePage() {
@@ -22,6 +23,8 @@ export default function ProfilePage() {
     const [editAddressLine1, setEditAddressLine1] = useState('');
     const [editAddressLine2, setEditAddressLine2] = useState('');
     const [editPhoneNumber, setEditPhoneNumber] = useState('');
+    const [editRealNameKana, setEditRealNameKana] = useState('');
+    const [balance, setBalance] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -53,8 +56,18 @@ export default function ProfilePage() {
                 setEditAddressLine1(profileData.address_line1 || '');
                 setEditAddressLine2(profileData.address_line2 || '');
                 setEditPhoneNumber(profileData.phone_number || '');
+                setEditRealNameKana(profileData.real_name_kana || '');
             } else {
                 setEditDisplayName(user.user_metadata?.name || '');
+            }
+
+            // Fetch Balance
+            try {
+                const balanceData = await getAvailableBalance(user.id);
+                setBalance(balanceData.available);
+            } catch (e) {
+                console.error("Failed to load balance", e);
+                setBalance(0);
             }
 
             setLoading(false);
@@ -68,6 +81,16 @@ export default function ProfilePage() {
         setSaving(true);
         try {
             const supabase = createClient();
+
+            // Sanitize: Remove all spaces (half/full width) from Kana
+            const sanitizedKana = editRealNameKana.replace(/[\s\u3000]+/g, '');
+
+            // Validate: Must be Full-width Katakana if provided
+            if (sanitizedKana && !/^[\u30A0-\u30FF]+$/.test(sanitizedKana)) {
+                alert('Real Name (Kana) must be in full-width Katakana only (no Kanji, Hiragana, or Latin letters).');
+                setSaving(false);
+                return;
+            }
 
             // Update Profile Table
             const { error: profileError } = await supabase
@@ -83,6 +106,7 @@ export default function ProfilePage() {
                     address_line1: editAddressLine1,
                     address_line2: editAddressLine2,
                     phone_number: editPhoneNumber,
+                    real_name_kana: sanitizedKana,
                     updated_at: new Date().toISOString(),
                 });
 
@@ -103,9 +127,11 @@ export default function ProfilePage() {
                 postal_code: editPostalCode,
                 address_line1: editAddressLine1,
                 address_line2: editAddressLine2,
-                phone_number: editPhoneNumber
+                phone_number: editPhoneNumber,
+                real_name_kana: sanitizedKana
             });
             setIsEditing(false);
+            setEditRealNameKana(sanitizedKana); // Update state to sanitized version
             alert('Profile updated successfully!');
 
         } catch (error) {
@@ -201,6 +227,22 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                             </div>
+
+                                            {/* Real Name Kana Input */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (Katakana) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
+                                                <input
+                                                    type="text"
+                                                    value={editRealNameKana}
+                                                    onChange={(e) => setEditRealNameKana(e.target.value)}
+                                                    placeholder="ヤマダタロウ"
+                                                    pattern="^[\u30A0-\u30FF]+$"
+                                                    title="Full-width Katakana only"
+                                                    className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                />
+                                                <p className="text-[10px] text-brand-platinum/50 mt-1">※ Must match your bank account holder name exactly (spaces will be auto-removed).</p>
+                                            </div>
+
                                             <div>
                                                 <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
                                                 <input
@@ -268,11 +310,12 @@ export default function ProfilePage() {
                                             @{profile?.email?.split('@')[0] || 'username'}
                                         </p>
 
-                                        {(profile?.address_line1 || profile?.postal_code) && (
+                                        {(profile?.address_line1 || profile?.postal_code || profile?.real_name_kana) && (
                                             <div className="bg-brand-dark-light/30 p-4 rounded-xl border border-brand-platinum/10 text-left">
                                                 <h3 className="text-xs font-bold text-brand-platinum uppercase tracking-wider mb-2">Shipping Information</h3>
                                                 <p className="text-white text-sm font-bold mb-1">
                                                     {profile.last_name} {profile.first_name}
+                                                    {profile.real_name_kana && <span className="text-xs font-normal text-brand-platinum/60 ml-2">({profile.real_name_kana})</span>}
                                                 </p>
                                                 <p className="text-brand-platinum/80 text-sm">
                                                     〒{profile.postal_code}<br />
@@ -330,6 +373,28 @@ export default function ProfilePage() {
                                     </>
                                 )}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Wallet Card */}
+                    <div className="bg-gradient-to-r from-gray-900 to-black border border-yellow-600/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-yellow-600/20 transition-all duration-700"></div>
+
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h3 className="text-yellow-600/80 text-sm font-bold tracking-widest uppercase mb-1">Current Balance / 売上金残高</h3>
+                                <div className="text-4xl md:text-5xl font-heading font-bold text-white tracking-tight flex items-baseline gap-2">
+                                    <span className="text-2xl text-white/50">¥</span>
+                                    {balance !== null ? balance.toLocaleString() : '---'}
+                                </div>
+                            </div>
+
+                            <Link
+                                href="/payouts"
+                                className="px-8 py-3 rounded-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg shadow-yellow-600/20 transition-all transform hover:scale-105"
+                            >
+                                Withdraw / 出金申請
+                            </Link>
                         </div>
                     </div>
 
