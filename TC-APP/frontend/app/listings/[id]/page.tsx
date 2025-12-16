@@ -26,36 +26,31 @@ export default function ListingDetail() {
     // Live Moment Logic
     const [timeLeft, setTimeLeft] = useState<string>('60:00');
     const [isLiveActive, setIsLiveActive] = useState(false);
+    const [activeMomentEnd, setActiveMomentEnd] = useState<number | null>(null);
 
     useEffect(() => {
-        // Initialize Live State
-        // In a real scenario, we would check the 'live_moments' table relative to now.
-        // For Debug mode, we simulate a fresh 60-minute window.
-        if (isDebugLive) {
-            setIsLiveActive(true);
-            const endTime = new Date().getTime() + 60 * 60 * 1000; // 60 minutes from now
+        if (!activeMomentEnd && !isDebugLive) return;
 
-            const timer = setInterval(() => {
-                const now = new Date().getTime();
-                const distance = endTime - now;
+        const endTime = activeMomentEnd || (new Date().getTime() + 60 * 60 * 1000);
+        setIsLiveActive(true);
 
-                if (distance < 0) {
-                    clearInterval(timer);
-                    setIsLiveActive(false);
-                    setTimeLeft('00:00');
-                } else {
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-                }
-            }, 1000);
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = endTime - now;
 
-            return () => clearInterval(timer);
-        } else {
-            // Reset if not live
-            setIsLiveActive(false);
-        }
-    }, [isDebugLive]);
+            if (distance < 0) {
+                clearInterval(timer);
+                setIsLiveActive(false);
+                setTimeLeft('00:00');
+            } else {
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [activeMomentEnd, isDebugLive]);
 
     // Derived state for pure visual toggle
     const isLiveMoment = isLiveActive;
@@ -86,6 +81,37 @@ export default function ListingDetail() {
                 setListing(data as any);
                 if (data.images && data.images.length > 0) {
                     setSelectedImage(data.images[0]);
+                }
+
+                // CHECK LIVE MOMENTS
+                const now = new Date();
+                const lookback = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+                const listingPlayerName = (data.player_name || '').toLowerCase();
+
+                const { data: moments } = await supabase
+                    .from('live_moments')
+                    .select('created_at, player_name')
+                    .gt('created_at', lookback)
+                    .order('created_at', { ascending: false });
+
+                if (moments && moments.length > 0) {
+                    const matchedMoment = moments.find(m => {
+                        const activePlayer = (m.player_name || '').toLowerCase();
+                        // 1. Direct Include match
+                        if (listingPlayerName.includes(activePlayer)) return true;
+                        if (activePlayer.includes(listingPlayerName)) return true;
+                        return false;
+                    });
+
+                    if (matchedMoment) {
+                        const createdTime = new Date(matchedMoment.created_at).getTime();
+                        if (!isNaN(createdTime)) {
+                            const end = createdTime + 60 * 60 * 1000;
+                            console.log("🔥 Listing Live:", { created: matchedMoment.created_at, now: now.toISOString(), end: new Date(end).toISOString() });
+                            setActiveMomentEnd(end);
+                            setIsLiveActive(true); // Ensure visual is on immediately
+                        }
+                    }
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -136,7 +162,7 @@ export default function ListingDetail() {
         <div className="min-h-screen bg-brand-dark pt-32 pb-32 px-4 sm:px-6 lg:px-8 flex flex-col">
             <div className="max-w-7xl mx-auto w-full flex-1">
                 <nav className="mb-8">
-                    <Link href="/" className="text-brand-platinum hover:text-white font-medium flex items-center transition-colors group">
+                    <Link href="/market" className="text-brand-platinum hover:text-white font-medium flex items-center transition-colors group">
                         <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span> Back to Market
                     </Link>
                 </nav>
@@ -157,36 +183,36 @@ export default function ListingDetail() {
                                 className={`mb-6 aspect-[2/3] relative rounded-xl bg-brand-dark group perspective-[1000px] z-10`}
                                 animate={isLiveMoment ? {
                                     boxShadow: [
-                                        "0 0 20px rgba(255, 215, 0, 0.3)",
-                                        "0 0 50px rgba(255, 215, 0, 0.6)",
-                                        "0 0 20px rgba(255, 215, 0, 0.3)"
+                                        "0 0 20px rgba(255, 69, 0, 0.3)",
+                                        "0 0 50px rgba(255, 69, 0, 0.6)",
+                                        "0 0 20px rgba(255, 69, 0, 0.3)"
                                     ],
                                     borderColor: [
-                                        "rgba(255, 215, 0, 0.4)",
-                                        "rgba(255, 215, 0, 1)",
-                                        "rgba(255, 215, 0, 0.4)"
+                                        "rgba(255, 69, 0, 0.4)",
+                                        "rgba(255, 69, 0, 1)",
+                                        "rgba(255, 69, 0, 0.4)"
                                     ]
                                 } : {}}
                                 transition={{
-                                    duration: 3,
+                                    duration: 2,
                                     repeat: Infinity,
                                     ease: "easeInOut"
                                 }}
                                 style={{
                                     borderWidth: isLiveMoment ? '2px' : '1px',
                                     borderStyle: 'solid',
-                                    borderColor: isLiveMoment ? '#FFD700' : 'rgba(255, 255, 255, 0.05)'
+                                    borderColor: isLiveMoment ? '#FF4500' : 'rgba(255, 255, 255, 0.05)'
                                 }}
                             >
                                 {/* Live Moment Badge */}
                                 {isLiveMoment && (
                                     <div className="absolute top-4 left-4 z-50">
                                         <div className="relative">
-                                            <div className="absolute inset-0 bg-brand-gold blur-lg opacity-50 animate-pulse"></div>
-                                            <div className="relative px-3 py-1 bg-gradient-to-r from-brand-gold to-brand-gold-glow text-brand-dark text-[10px] font-bold tracking-widest uppercase rounded shadow-lg border border-white/30 flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                                            <div className="absolute inset-0 bg-red-600 blur-lg opacity-50 animate-pulse"></div>
+                                            <div className="relative px-3 py-1 bg-gradient-to-r from-red-600 to-red-500 text-white text-[10px] font-bold tracking-widest uppercase rounded shadow-lg border border-white/30 flex items-center gap-2">
+                                                <span className="text-sm">🔥</span>
                                                 LIVE MOMENT
-                                                <span className="ml-2 pl-2 border-l border-brand-dark/20 font-mono text-xs">
+                                                <span className="ml-2 pl-2 border-l border-white/20 font-mono text-xs">
                                                     {timeLeft}
                                                 </span>
                                             </div>

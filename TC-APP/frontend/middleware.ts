@@ -1,34 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextRequest } from 'next/server'
 import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-    // Staging Basic Auth Protection - DISABLED by user request
-    /*
-    if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging') {
-        const basicAuth = request.headers.get('authorization')
-
-        if (basicAuth) {
-            const authValue = basicAuth.split(' ')[1]
-            const [user, pwd] = atob(authValue).split(':')
-
-            const validUser = process.env.STAGING_USER || 'admin'
-            const validPass = process.env.STAGING_PASSWORD || 'password'
-
-            if (user === validUser && pwd === validPass) {
-                return await updateSession(request)
-            }
-        }
-
-        return new NextResponse('Authentication required', {
-            status: 401,
-            headers: {
-                // Changing realm to force re-prompt if cached
-                'WWW-Authenticate': 'Basic realm="TC App Staging"',
-            },
-        })
-    }
-    */
-
     return await updateSession(request)
 }
 

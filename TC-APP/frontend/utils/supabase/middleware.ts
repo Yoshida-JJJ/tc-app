@@ -54,7 +54,17 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Admin Access Control
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+        const userEmail = user?.email;
+
+        if (!user || !userEmail || !adminEmails.includes(userEmail)) {
+            return NextResponse.redirect(new URL('/', request.url))
+        }
+    }
 
     return response
 }

@@ -17,7 +17,7 @@ function MarketPageContent() {
     const [error, setError] = useState<string | null>(null);
 
     // Search & Filter State
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
     const [selectedTeam, setSelectedTeam] = useState<string>('');
     const [sortOrder, setSortOrder] = useState('newest');
 
@@ -37,15 +37,19 @@ function MarketPageContent() {
             try {
                 const supabase = createClient();
                 const now = new Date();
-                const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+                const lookback = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
                 // 1. Fetch Active Live Moments
                 const { data: activeMoments } = await supabase
                     .from('live_moments')
-                    .select('player_name')
-                    .gt('created_at', oneHourAgo);
+                    .select('player_name, created_at')
+                    .gt('created_at', lookback);
 
-                const activePlayers = Array.from(new Set(activeMoments?.map(m => m.player_name) || []));
+                // Store full objects for time calculation
+                const momentsData = activeMoments || [];
+
+                const activePlayers = Array.from(new Set(momentsData?.map(m => (m.player_name || '').toLowerCase().trim()) || []));
+                console.log("Active Players (Live):", activePlayers);
 
                 // Helper to build base query with filters
                 const buildBaseQuery = () => {
@@ -111,6 +115,34 @@ function MarketPageContent() {
                         (item.series_name || '').toLowerCase().includes(lowerSearch)
                     );
                 }
+
+                // INJECT LIVE MOMENT FLAG
+                // This ensures the CardListing receives true if player is in the active list (Case Insensitive & Fuzzy)
+                finalData = finalData.map((item: any) => {
+                    const itemName = (item.player_name || '').toLowerCase();
+
+                    // Find actual matching moment
+                    const matchedMoment = momentsData.find((m: any) => {
+                        const p1 = (m.player_name || '').toLowerCase();
+                        if (itemName.includes(p1)) return true;
+                        if (p1.includes(itemName)) return true;
+                        return false;
+                    });
+
+                    let endTime = null;
+                    if (matchedMoment && matchedMoment.created_at) {
+                        const created = new Date(matchedMoment.created_at).getTime();
+                        if (!isNaN(created)) {
+                            endTime = created + 60 * 60 * 1000;
+                        }
+                    }
+
+                    return {
+                        ...item,
+                        is_live_moment: !!matchedMoment,
+                        live_moment_end_time: endTime
+                    };
+                });
 
                 setListings(finalData);
 
@@ -210,7 +242,12 @@ function MarketPageContent() {
                         <>
                             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                                 {listings.map((item) => (
-                                    <CardListing key={item.id} item={item} isLiveMoment={item.is_live_moment || isDebugLive} />
+                                    <CardListing
+                                        key={item.id}
+                                        item={item}
+                                        isLiveMoment={(item as any).is_live_moment || isDebugLive}
+                                        liveMomentEndTime={(item as any).live_moment_end_time}
+                                    />
                                 ))}
                             </div>
 

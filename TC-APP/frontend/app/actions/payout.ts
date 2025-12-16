@@ -3,8 +3,13 @@
 import { createClient } from '../../utils/supabase/server';
 import { Payout } from '../../types';
 
+import { Resend } from 'resend';
+import { PayoutRequestEmail } from '../../components/emails/PayoutRequestEmail';
+import { ReactElement } from 'react';
+
 // Constants
 const PLATFORM_FEE_PERCENTAGE = 0.1; // 10%
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Logic A: Calculate Available Balance
@@ -133,6 +138,12 @@ export async function requestPayout(userId: string, netAmount: number) {
 
     if (netAmount <= 0) throw new Error('Invalid amount.');
 
+    // 0. Verify Bank Account Exists
+    const bankAccount = await getBankAccount(userId);
+    if (!bankAccount) {
+        throw new Error('Please register a bank account before requesting a payout.');
+    }
+
     // 1. Calculate Fee based on Net Amount
     // Rule: If Net Payout is >= 30,000, Fee is 0.
     let fee = WITHDRAWAL_FEE;
@@ -160,6 +171,39 @@ export async function requestPayout(userId: string, netAmount: number) {
         });
 
     if (error) throw new Error(error.message);
+
+    // 4. Send Notification to Admins
+    if (process.env.ADMIN_EMAILS) {
+        try {
+            const adminEmails = process.env.ADMIN_EMAILS.split(',').map(e => e.trim());
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+            // Fetch User Name for Email
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', userId)
+                .single();
+
+            const userName = profile?.name || 'Unknown User';
+
+            await resend.emails.send({
+                from: 'Stadium Card <notifications@resend.dev>',
+                to: adminEmails,
+                subject: 'New Payout Request',
+                react: PayoutRequestEmail({
+                    userName,
+                    amount: netAmount,
+                    payoutId: 'New', // We don't have ID easily unless we select it back. Using generic label.
+                    adminUrl: `${baseUrl}/admin/payouts`
+                }) as ReactElement
+            });
+        } catch (emailErr) {
+            console.error("Failed to send admin notification:", emailErr);
+            // Non-blocking error
+        }
+    }
+
     return { success: true };
 }
 

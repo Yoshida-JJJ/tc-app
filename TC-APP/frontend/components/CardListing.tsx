@@ -7,9 +7,10 @@ import { ListingItem } from '../types';
 interface ListingItemProps {
     item: ListingItem;
     isLiveMoment?: boolean; // Debug/Live prop
+    liveMomentEndTime?: number | null;
 }
 
-export default function CardListing({ item, isLiveMoment = false }: ListingItemProps) {
+export default function CardListing({ item, isLiveMoment = false, liveMomentEndTime }: ListingItemProps) {
     const isSold = item.status !== 'Active';
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
@@ -21,10 +22,10 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
 
     useEffect(() => {
         setIsLiveActive(isLiveMoment); // Sync with prop
-
         if (isLiveMoment) {
-            const endTime = new Date().getTime() + 60 * 60 * 1000;
-            const timer = setInterval(() => {
+            const endTime = liveMomentEndTime || (new Date().getTime() + 60 * 60 * 1000);
+
+            const updateTimer = () => {
                 const now = new Date().getTime();
                 const distance = endTime - now;
                 if (distance > 0) {
@@ -34,14 +35,16 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 } else {
                     setTimeLeft('00:00');
                     setIsLiveActive(false); // Auto-expire visual effects
-                    clearInterval(timer);
                 }
-            }, 1000);
+            };
+
+            updateTimer(); // Immediate update
+            const timer = setInterval(updateTimer, 1000);
             return () => clearInterval(timer);
         } else {
             setIsLiveActive(false);
         }
-    }, [isLiveMoment]);
+    }, [isLiveMoment, item.player_name, liveMomentEndTime]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -54,18 +57,18 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
             className={`glass-panel rounded-xl overflow-hidden card-hover h-full flex flex-col relative ${isSold ? 'grayscale-[0.5]' : ''}`}
             animate={isLiveActive ? {
                 boxShadow: [
-                    "0 0 15px rgba(255, 215, 0, 0.2)",
-                    "0 0 30px rgba(255, 215, 0, 0.5)",
-                    "0 0 15px rgba(255, 215, 0, 0.2)"
+                    "0 0 15px rgba(255, 69, 0, 0.2)",
+                    "0 0 30px rgba(255, 69, 0, 0.6)",
+                    "0 0 15px rgba(255, 69, 0, 0.2)"
                 ],
                 borderColor: [
-                    "rgba(255, 215, 0, 0.4)",
-                    "rgba(255, 215, 0, 1)",
-                    "rgba(255, 215, 0, 0.4)"
+                    "rgba(255, 69, 0, 0.4)",
+                    "rgba(255, 69, 0, 1)",
+                    "rgba(255, 69, 0, 0.4)"
                 ]
             } : {}}
             transition={{
-                duration: 3,
+                duration: 2,
                 repeat: Infinity,
                 ease: "easeInOut"
             }}
@@ -134,7 +137,14 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 )}
 
                 {/* Badges */}
-                <div className="absolute top-3 right-3 flex flex-col gap-2 items-end z-10 [backface-visibility:hidden]">
+                <div className="absolute top-3 right-3 flex flex-col gap-2 items-end z-20 [backface-visibility:hidden]">
+                    {isLiveActive && (
+                        <div className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold tracking-wider rounded shadow-lg shadow-red-600/40 border border-white/20 flex items-center gap-1.5 animate-pulse">
+                            <span className="text-sm">🔥</span>
+                            LIVE
+                            <span className="ml-1 pl-1 border-l border-white/20 font-mono">{timeLeft}</span>
+                        </div>
+                    )}
                     <span className="bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-white/10">
                         {item.year} {item.manufacturer}
                     </span>
@@ -187,14 +197,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 </div>
             </div>
 
-            {/* Live Moment Badge (Direct Positioning) */}
-            {isLiveActive && (
-                <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 backdrop-blur-md z-[100] animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                    LIVE
-                    <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
-                </div>
-            )}
+
 
             {/* Hover Glow Effect */}
             <div className="absolute inset-0 border-2 border-brand-blue/0 group-hover:border-brand-blue/50 rounded-xl transition-all duration-300 pointer-events-none"></div>
