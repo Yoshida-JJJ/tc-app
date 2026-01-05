@@ -528,15 +528,15 @@ function MyPageContent() {
                                                             {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending' || item.status === 'Shipped') && (
                                                                 order ? (
                                                                     <Link
-                                                                        href={currentUserId === (item.seller_id || item.orders?.seller_id)
+                                                                        href={(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id)
                                                                             ? `/orders/sell/${order.id}`
                                                                             : `/orders/buy/${order.id}`}
-                                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${currentUserId === (item.seller_id || item.orders?.seller_id)
+                                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id)
                                                                             ? "text-brand-dark bg-brand-blue hover:bg-brand-blue-light shadow-brand-blue/20"
                                                                             : "text-brand-dark bg-brand-gold hover:bg-brand-gold-light shadow-brand-gold/20"
                                                                             }`}
                                                                     >
-                                                                        {currentUserId === (item.seller_id || item.orders?.seller_id) ? "Manage Order" : "View Order"}
+                                                                        {(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id) ? "Manage Order" : "View Order"}
                                                                     </Link>
                                                                 ) : (
                                                                     <span className="text-xs text-brand-platinum/40 italic">Syncing Order...</span>
