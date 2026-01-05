@@ -542,10 +542,6 @@ function MyPageContent() {
                                                                     <span className="text-xs text-brand-platinum/40 italic">Syncing Order...</span>
                                                                 )
                                                             )}
-                                                            {/* DEBUG INFO: Visible on Staging Only */}
-                                                            <div className="absolute -top-6 right-0 bg-black/80 text-white p-1 text-[10px] whitespace-nowrap z-50">
-                                                                Me:{currentUserId?.slice(0, 4)} Seller:{item.seller_id?.slice(0, 4)} OrdSell:{item.orders?.seller_id?.slice(0, 4)}
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
