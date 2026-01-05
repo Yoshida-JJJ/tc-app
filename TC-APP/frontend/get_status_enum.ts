@@ -11,7 +11,7 @@ const supabaseAdmin = createClient(supabaseUrl!, supabaseKey!);
 
 async function debug() {
     // Query to get enum name and values for a column
-    const query = \`
+    const query = `
         SELECT 
             t.typname AS enum_name,  
             e.enumlabel AS enum_value
@@ -19,7 +19,7 @@ async function debug() {
         JOIN pg_enum e ON t.oid = e.enumtypid  
         JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
         WHERE t.typname = 'listing_status_enum';
-    \`;
+    `;
 
     const { data, error } = await supabaseAdmin.rpc('run_sql_query', { query_text: query });
     if (error) {
