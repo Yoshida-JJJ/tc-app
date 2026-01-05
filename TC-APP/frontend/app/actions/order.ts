@@ -10,7 +10,9 @@ import { ReactElement } from 'react';
 // Admin Client for Privileged Operations (Fetching Emails)
 // Helper to get Admin Client safely
 function getAdminClient() {
+    console.log("[Debug] getAdminClient called. Checking env vars...");
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error("FATAL: SUPABASE_SERVICE_ROLE_KEY is missing/undefined in Vercel environment.");
         throw new Error('Server Config Error: SUPABASE_SERVICE_ROLE_KEY is missing.');
     }
     return createAdminClient(
