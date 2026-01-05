@@ -41,6 +41,7 @@ function MyPageContent() {
     const [historySold, setHistorySold] = useState<ListingItem[]>([]);
     const [historyPurchased, setHistoryPurchased] = useState<OrderItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showAnimation, setShowAnimation] = useState(false);
 
@@ -56,6 +57,7 @@ function MyPageContent() {
             return;
         }
         setUser(user);
+        setCurrentUserId(user.id);
 
         try {
             // Fetch All My Items (Listings + Collection)
@@ -526,10 +528,15 @@ function MyPageContent() {
                                                             {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending' || item.status === 'Shipped') && (
                                                                 order ? (
                                                                     <Link
-                                                                        href={`/orders/sell/${order.id}`}
-                                                                        className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
+                                                                        href={currentUserId === (item.seller_id || item.orders?.seller_id)
+                                                                            ? `/orders/sell/${order.id}`
+                                                                            : `/orders/buy/${order.id}`}
+                                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${currentUserId === (item.seller_id || item.orders?.seller_id)
+                                                                            ? "text-brand-dark bg-brand-blue hover:bg-brand-blue-light shadow-brand-blue/20"
+                                                                            : "text-brand-dark bg-brand-gold hover:bg-brand-gold-light shadow-brand-gold/20"
+                                                                            }`}
                                                                     >
-                                                                        Manage Order
+                                                                        {currentUserId === (item.seller_id || item.orders?.seller_id) ? "Manage Order" : "View Order"}
                                                                     </Link>
                                                                 ) : (
                                                                     <span className="text-xs text-brand-platinum/40 italic">Syncing Order...</span>
