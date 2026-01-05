@@ -59,8 +59,9 @@ export async function markAsShipped(orderId: string, trackingNumber?: string, ca
     console.log(`[Debug markAsShipped] Order: ${orderId}, User: ${user.id}, Seller: ${listingDetail?.seller_id}`);
 
     if (listingDetail.seller_id !== user.id) {
-        console.error(`[Debug markAsShipped] Mismatch! Expecting ${listingDetail.seller_id}, got ${user.id}`);
-        throw new Error('Unauthorized: You are not the seller.');
+        const msg = `[Debug] Unauthorized: Seller ID mismatch. UserID=${user.id}, ListingSellerID=${listingDetail.seller_id}`;
+        console.error(msg);
+        throw new Error(msg);
     }
 
     // 2. Update Order Status (Using Admin to bypass RLS/Policy constraints)
