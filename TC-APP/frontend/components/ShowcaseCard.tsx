@@ -18,54 +18,79 @@ interface ICard {
     variation?: string | null;
     series_name?: string | null;
     card_number?: string | null;
+    moment_history?: any[];
+    moment_created_at?: string | null;
 }
+
+import MomentHistoryBadge from './MomentHistoryBadge';
 interface ShowcaseItemProps {
     item: ICard;
     type?: 'listed' | 'purchased'; // To distinguish in aggregated view
     variant?: 'default' | 'live-moment';
     is_live_moment?: boolean; // Added flag
+    live_moments?: any[]; // Array for multiple moments
     onDelete?: (id: string) => void;
     onCancel?: (id: string) => void;
     onToggleDisplay?: (id: string, currentStatus: string) => void;
     onClone?: (id: string) => void;
+    onRestore?: (id: string) => void;
+    isArchived?: boolean;
+    moment_created_at?: string | null;
 }
 
-export default function ShowcaseCard({ item, type, variant = 'default', is_live_moment, onDelete, onCancel, onToggleDisplay, onClone }: ShowcaseItemProps) {
+export default function ShowcaseCard({ item, type, variant = 'default', is_live_moment, live_moments = [], onDelete, onCancel, onToggleDisplay, onClone, onRestore, isArchived, moment_created_at }: ShowcaseItemProps) {
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
     // Use prop if provided, otherwise fallback to variant (for backward compatibility or explicit override)
-    const isLiveMoment = is_live_moment || variant === 'live-moment';
+    const isLiveMoment = is_live_moment || variant === 'live-moment' || live_moments.length > 0;
 
-    // Countdown & Active State Logic
-    const [timeLeft, setTimeLeft] = useState<string>('60:00');
+    // Countdown logic for multiple moments
+    const [momentsWithTime, setMomentsWithTime] = useState<any[]>([]);
     const [isLiveActive, setIsLiveActive] = useState(isLiveMoment);
 
     useEffect(() => {
-        setIsLiveActive(isLiveMoment); // Sync with prop
-
         if (isLiveMoment) {
-            // Simulate countdown from 60 mins
-            const endTime = new Date().getTime() + 60 * 60 * 1000;
+            // Normalize moments: use live_moments array or fallback to single moment_created_at
+            let sourceMoments = [...live_moments];
+            if (sourceMoments.length === 0 && (is_live_moment || variant === 'live-moment')) {
+                sourceMoments.push({
+                    id: 'temp-' + item.id,
+                    created_at: moment_created_at || new Date().toISOString(),
+                    title: 'Live Moment'
+                });
+            }
 
-            const timer = setInterval(() => {
+            const updateTimers = () => {
                 const now = new Date().getTime();
-                const distance = endTime - now;
+                const updated = sourceMoments.map(m => {
+                    const startTime = new Date(m.created_at).getTime();
+                    const endTime = startTime + 60 * 60 * 1000;
+                    const distance = endTime - now;
 
-                if (distance > 0) {
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-                } else {
-                    setTimeLeft('00:00');
-                    setIsLiveActive(false); // Auto-expire visual effects
-                    clearInterval(timer);
-                }
-            }, 1000);
-            return () => clearInterval(timer);
+                    if (distance > 0) {
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                        return {
+                            ...m,
+                            timeLeft: `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+                            isExpired: false
+                        };
+                    }
+                    return { ...m, timeLeft: '00:00', isExpired: true };
+                });
+
+                setMomentsWithTime(updated);
+                setIsLiveActive(updated.some(m => !m.isExpired));
+            };
+
+            updateTimers();
+            const timerId = setInterval(updateTimers, 1000);
+            return () => clearInterval(timerId);
         } else {
+            setMomentsWithTime([]);
             setIsLiveActive(false);
         }
-    }, [isLiveMoment]);
+    }, [isLiveMoment, live_moments, is_live_moment, variant, moment_created_at, item.id]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -104,12 +129,14 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
 
             {/* Live Moment Badge */}
             {isLiveActive && (
-                <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none">
-                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50 animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                        LIVE
-                        <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
-                    </div>
+                <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none p-3 space-y-2">
+                    {momentsWithTime.filter(m => !m.isExpired).map((m, idx) => (
+                        <div key={m.id || idx} className="relative px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50 animate-pulse w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                            LIVE
+                            <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{m.timeLeft}</span>
+                        </div>
+                    ))}
                     {/* Corner Glow Effect */}
                     <div className="absolute -top-10 -left-10 w-20 h-20 bg-brand-gold/30 blur-2xl rounded-full"></div>
                     <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-brand-gold/30 blur-2xl rounded-full"></div>
@@ -117,7 +144,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
             )}
             {/* Card Image Area */}
             <div className="relative aspect-[3/4] w-full perspective-[1000px]">
-                <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped && hasBackImage ? '[transform:rotateY(180deg)]' : ''}`}>
+                <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped && (hasBackImage || isLiveActive || (item.moment_history && item.moment_history.length > 0)) ? '[transform:rotateY(180deg)]' : ''}`}>
                     {/* Front Image */}
                     <div className="absolute inset-0 w-full h-full [backface-visibility:hidden]">
                         {item.images && item.images[0] ? (
@@ -148,42 +175,59 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                                 className="object-cover"
                             />
 
-                            {/* Live Moment Stats Overlay */}
-                            {isLiveActive && (
-                                <div className="absolute inset-0 bg-black/60 flex flex-col justify-center items-center p-4 text-center">
-                                    <div className="border-2 border-brand-gold/50 p-3 rounded-lg bg-black/40 backdrop-blur-sm w-full">
-                                        <h4 className="text-brand-gold font-heading font-bold text-lg mb-2 tracking-widest border-b border-brand-gold/30 pb-1">MOMENT DATA</h4>
-                                        <div className="space-y-2 text-xs font-mono">
-                                            <div className="flex justify-between">
-                                                <span className="text-brand-platinum/60">DATE</span>
-                                                <span className="text-white font-bold">2024.10.01</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-brand-platinum/60">LOC</span>
-                                                <span className="text-white font-bold">Tokyo Dome</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-brand-platinum/60">OPP</span>
-                                                <span className="text-white font-bold">vs Giants</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-brand-platinum/60">RESULT</span>
-                                                <span className="text-white font-bold">4-3 W</span>
-                                            </div>
-                                            <div className="pt-2 border-t border-brand-platinum/10">
-                                                <div className="text-brand-gold font-bold mb-1">WALK-OFF HOME RUN</div>
-                                                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                                    <div className="bg-brand-platinum/10 rounded p-1">
-                                                        <div className="text-brand-platinum/50">EXIT VELO</div>
-                                                        <div className="text-white font-bold">110 mph</div>
+                            {/* Live Moment Stats Overlay / Latest Stamped Moment */}
+                            {(isLiveActive || (item.moment_history && item.moment_history.length > 0)) && (
+                                <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center p-4 text-center">
+                                    <div className="border-2 border-brand-gold/50 p-3 rounded-lg bg-black/40 backdrop-blur-md w-full">
+                                        <h4 className="text-brand-gold font-heading font-bold text-sm mb-2 tracking-widest border-b border-brand-gold/30 pb-1">
+                                            {isLiveActive ? 'LIVE MOMENT DATA' : 'STAMPED MOMENT'}
+                                        </h4>
+                                        {(() => {
+                                            const activeMoment = momentsWithTime.find(m => !m.isExpired);
+                                            // Prioritize moments with memories, or fallback to the absolute latest
+                                            const history = item.moment_history || [];
+                                            const memoryMoment = history.slice().reverse().find((m: any) => m.memories && m.memories.length > 0);
+
+                                            const latestMoment = memoryMoment || (history.length > 0 ? history[history.length - 1] : activeMoment);
+
+                                            if (!latestMoment) return null;
+
+                                            return (
+                                                <div className="space-y-2 text-[10px] font-mono">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-brand-platinum/60 uppercase">TITLE</span>
+                                                        <span className="text-white font-bold truncate max-w-[100px]" title={latestMoment.title || 'ACTIVE'}>
+                                                            {latestMoment.title || 'ACTIVE NOW'}
+                                                        </span>
                                                     </div>
-                                                    <div className="bg-brand-platinum/10 rounded p-1">
-                                                        <div className="text-brand-platinum/50">DISTANCE</div>
-                                                        <div className="text-white font-bold">450 ft</div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-brand-platinum/60 uppercase">PLAYER</span>
+                                                        <span className="text-white font-bold">{latestMoment.player_name || item.player_name || '---'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-brand-platinum/60 uppercase">TIME</span>
+                                                        <span className="text-white font-bold">
+                                                            {latestMoment.timestamp ? new Date(latestMoment.timestamp).toLocaleDateString() : (latestMoment.created_at ? new Date(latestMoment.created_at).toLocaleDateString() : new Date().toLocaleDateString())}
+                                                        </span>
+                                                    </div>
+                                                    <div className="pt-2 border-t border-brand-platinum/10">
+                                                        <div className="text-brand-gold font-bold mb-1 uppercase text-[9px]">
+                                                            {latestMoment.description?.substring(0, 30) || 'CAPTURING LIVE EVENT...'}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2 text-[9px]">
+                                                            <div className="bg-brand-platinum/10 rounded p-1">
+                                                                <div className="text-brand-platinum/50 uppercase">INTENSITY</div>
+                                                                <div className="text-white font-bold">{latestMoment.intensity || '--'}</div>
+                                                            </div>
+                                                            <div className="bg-brand-platinum/10 rounded p-1">
+                                                                <div className="text-brand-platinum/50 uppercase">RESULT</div>
+                                                                <div className="text-white font-bold truncate">{latestMoment.match_result || '---'}</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             )}
@@ -192,7 +236,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                 </div>
 
                 {/* Flip Button */}
-                {hasBackImage && (
+                {(hasBackImage || isLiveActive || (item.moment_history && item.moment_history.length > 0)) && (
                     <button
                         onClick={handleFlip}
                         className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/60 text-white hover:bg-brand-blue hover:text-white transition-colors backdrop-blur-sm border border-white/10"
@@ -208,9 +252,16 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
             {/* Footer Area: Info & Actions */}
             <div className="p-3 bg-brand-dark-light border-t border-brand-platinum/5 flex flex-col gap-2">
                 {/* Info */}
-                <div>
-                    <p className="text-white font-bold text-sm truncate" title={item.player_name || 'Unknown'}>{item.player_name || 'Unknown'}</p>
-                    <p className="text-brand-platinum/70 text-xs truncate">{item.year || ''} {item.manufacturer || ''}</p>
+                <div className="flex justify-between items-start">
+                    <div className="overflow-hidden">
+                        <p className="text-white font-bold text-sm truncate" title={item.player_name || 'Unknown'}>{item.player_name || 'Unknown'}</p>
+                        <p className="text-brand-platinum/70 text-xs truncate">{item.year || ''} {item.manufacturer || ''}</p>
+                    </div>
+                    {/* Moment History Badge */}
+                    <MomentHistoryBadge
+                        history={item.moment_history}
+                        liveCount={0} // Disabled per user request (Step 7712)
+                    />
                 </div>
 
                 {/* Status & Price */}
@@ -247,7 +298,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                 {/* Action Buttons Row */}
                 <div className="relative z-20 flex items-center justify-end gap-2 pt-3 mt-1 border-t border-brand-platinum/10">
                     {/* Toggle Display Status Button */}
-                    {((item.status === 'Draft' || item.status === 'Display' || item.status === 'Active') && onToggleDisplay) || (type === 'purchased' && onClone) ? (
+                    {!isArchived && (((item.status === 'Draft' || item.status === 'Display' || item.status === 'Active') && onToggleDisplay) || (type === 'purchased' && onClone)) ? (
                         <div className="group/tooltip relative">
                             <button
                                 onClick={(e) => {
@@ -292,7 +343,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                     )}
 
                     {/* Cancel Listing Button (for Active items) */}
-                    {item.status === 'Active' && onCancel && (
+                    {!isArchived && item.status === 'Active' && onCancel && (
                         <div className="group/tooltip relative">
                             <button
                                 onClick={(e) => {
@@ -310,8 +361,27 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                         </div>
                     )}
 
-                    {/* Delete Button */}
-                    {onDelete && (item.status === 'Draft' || item.status === 'Display') && (
+                    {/* Restore Button (Archive only) */}
+                    {isArchived && onRestore && (
+                        <div className="group/tooltip relative">
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onRestore(item.id);
+                                }}
+                                className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded-lg border border-green-500/30 hover:border-green-500/50 transition-all duration-300"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                            <div className="absolute right-0 bottom-full mb-2 px-2 py-1 bg-brand-dark border border-brand-platinum/20 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none whitespace-nowrap transition-opacity duration-200 z-50">
+                                コレクションに戻す
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delete Button (Normal view only, or Archive if physical delete allowed) */}
+                    {!isArchived && onDelete && (item.status === 'Draft' || item.status === 'Display') && (
                         <div className="group/tooltip relative">
                             <button
                                 onClick={(e) => {
@@ -324,7 +394,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                             <div className="absolute right-0 bottom-full mb-2 px-2 py-1 bg-brand-dark border border-brand-platinum/20 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none whitespace-nowrap transition-opacity duration-200 z-50">
-                                削除
+                                削除 (アーカイブ)
                             </div>
                         </div>
                     )}

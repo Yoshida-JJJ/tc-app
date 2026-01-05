@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
 import { createClient } from '../../../utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
     try {
@@ -32,65 +33,101 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Cannot purchase your own listing' }, { status: 400 });
         }
 
+        // 2.5 Fetch Active Live Moment (Snapshot)
+        // Check for moments in the last 1 hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { data: recentMoments } = await supabase
+            .from('live_moments')
+            .select('*')
+            .gt('created_at', oneHourAgo);
+
+        // Filter by Player Name (Fuzzy Match)
+        const listingPlayer = (listing.player_name || '').toLowerCase();
+
+        const matchedMoments = recentMoments?.filter(m => {
+            const momentPlayer = (m.player_name || '').toLowerCase();
+            return listingPlayer.includes(momentPlayer) || momentPlayer.includes(listingPlayer);
+        }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || [];
+
+        // Snapshot ALL matched moments (Multiple Moments Support)
+        const momentSnapshot = matchedMoments.length > 0 ? matchedMoments : null;
+
         // 3. Create or Reuse Pending Order
-        // Check if an order already exists for this listing
-        const { data: existingOrder, error: fetchOrderError } = await supabase
+        // Build Admin Client for cross-user reservation check
+        const supabaseAdmin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Check for any order for this listing that is effectively "locked"
+        // Statuses that block a new checkout: pending, paid, awaiting_shipping, shipped
+        const { data: activeOrders, error: fetchOrderError } = await supabaseAdmin
             .from('orders')
             .select('*')
             .eq('listing_id', listingId)
-            .maybeSingle();
+            .in('status', ['pending', 'paid', 'awaiting_shipping', 'shipped']);
 
-        let order = existingOrder;
+        if (fetchOrderError) {
+            console.error('Fetch Order Error:', fetchOrderError);
+        }
 
-        if (existingOrder) {
-            // If order exists
-            if (existingOrder.status === 'paid' || existingOrder.status === 'completed') {
-                return NextResponse.json({ error: 'This item has already been sold.' }, { status: 400 });
-            }
+        const existingMyOrder = activeOrders?.find(o => o.buyer_id === user.id);
+        const someoneElseActiveOrder = activeOrders?.find(o => o.buyer_id !== user.id);
 
-            // If it's someone else's pending order (and RLS allowed us to see it? RLS usually hides it)
-            // If RLS works, we only see OUR orders.
-            // But if listing_id is unique, and we can't see the order, the INSERT below will fail with constraint error.
-            if (existingOrder.buyer_id !== user.id) {
-                // Should technically typically invalid if we can see it but it's not ours (depends on RLS)
-                return NextResponse.json({ error: 'Item is currently in a transaction.' }, { status: 400 });
-            }
+        let order = null;
 
-            // If it's our pending order, we reuse it.
-            // Update shipping details if provided
+        if (someoneElseActiveOrder) {
+            // If someone else has an active transaction (pending or paid), we are blocked.
+            const errorMsg = ['paid', 'awaiting_shipping', 'shipped'].includes(someoneElseActiveOrder.status)
+                ? 'This item has already been sold.'
+                : 'Item is currently in a transaction.';
+            return NextResponse.json({ error: errorMsg }, { status: 400 });
+        }
+
+        if (existingMyOrder) {
+            // If we have a pending order, we reuse it.
+            // Update shipping details AND refresh moment snapshot
+            const updateData: any = {
+                moment_snapshot: momentSnapshot
+            };
+
             if (shippingDetails) {
-                await supabase.from('orders').update({
-                    shipping_name: shippingDetails.name,
-                    shipping_postal_code: shippingDetails.postalCode,
-                    shipping_address: shippingDetails.address,
-                    shipping_phone: shippingDetails.phone
-                }).eq('id', existingOrder.id);
+                updateData.shipping_name = shippingDetails.name;
+                updateData.shipping_postal_code = shippingDetails.postalCode;
+                updateData.shipping_address = shippingDetails.address;
+                updateData.shipping_phone = shippingDetails.phone;
             }
+
+            await supabaseAdmin.from('orders').update(updateData).eq('id', existingMyOrder.id);
+            order = { ...existingMyOrder, ...updateData };
         } else {
-            // No visible order found. Try to insert.
-            const { data: newOrder, error: insertError } = await supabase
+            // No active order for us. Create a new one.
+            const { data: newOrder, error: insertError } = await supabaseAdmin
                 .from('orders')
                 .insert({
                     listing_id: listingId,
                     buyer_id: user.id,
+                    seller_id: listing.seller_id,
                     payment_method_id: 'stripe_checkout',
                     total_amount: listing.price,
                     status: 'pending',
                     shipping_name: shippingDetails?.name,
                     shipping_postal_code: shippingDetails?.postalCode,
                     shipping_address: shippingDetails?.address,
-                    shipping_phone: shippingDetails?.phone
+                    shipping_phone: shippingDetails?.phone,
+                    moment_snapshot: momentSnapshot
                 })
                 .select()
                 .single();
 
             if (insertError) {
-                // If insert failed, it might be a unique constraint violation from a HIDDEN order (someone else's)
-                if (insertError.code === '23505') { // Unique violation
+                if (insertError.code === '23505') {
                     return NextResponse.json({ error: 'Item is currently reserved by another user.' }, { status: 409 });
                 }
                 console.error('Order creation failed:', insertError);
-                return NextResponse.json({ error: 'Failed to create order record' }, { status: 500 });
+                return NextResponse.json({
+                    error: `Failed to create order record: ${insertError.message}`
+                }, { status: 500 });
             }
             order = newOrder;
         }

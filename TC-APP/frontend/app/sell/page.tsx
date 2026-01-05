@@ -405,7 +405,7 @@ function SellContent() {
                 is_autograph: formData.isAutograph,
                 description: formData.description,
                 condition_rating: !formData.isGraded ? formData.condition : null,
-
+                deleted_at: null, // Clear archived status if listed
                 status: 'Active'
             };
 

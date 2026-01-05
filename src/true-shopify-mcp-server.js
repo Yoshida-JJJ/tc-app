@@ -1007,9 +1007,166 @@ class TrueShopifyMCPServer {
     }
   }
 
+  // 先月の売上と売れた商品を一括取得するツール
+  async getLastMonthSalesAndProducts(params = {}) {
+    console.log('📅 先月の売上と商品分析開始...');
+    
+    // Shopify認証情報の確認
+    if (!this.shopifyStore || !this.shopifyAccessToken) {
+      console.error('❌ Shopify認証情報が未設定');
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'get_last_month_sales_and_products',
+            error: 'Shopify認証情報が設定されていません',
+            setup_required: true,
+            instructions: {
+              message: 'Shopifyストア情報とアクセストークンの設定が必要です',
+              environment_variables: {
+                SHOPIFY_STORE_URL: 'あなたのストア.myshopify.com',
+                SHOPIFY_ACCESS_TOKEN: 'Shopify管理画面で生成したアクセストークン'
+              },
+              next_steps: [
+                '1. Shopify管理画面 > 設定 > アプリと販売チャネル > アプリを開発する',
+                '2. プライベートアプリを作成',
+                '3. Admin API権限を設定',
+                '4. 環境変数を設定してサーバーを再起動'
+              ]
+            },
+            timestamp: new Date().toISOString()
+          }, null, 2)
+        }]
+      };
+    }
+    
+    try {
+      // 先月の期間を計算
+      const today = new Date();
+      const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+      
+      console.log(`📊 分析期間: ${lastMonthStart.toLocaleDateString()} - ${lastMonthEnd.toLocaleDateString()}`);
+      
+      // 先月の注文データを取得（詳細情報付き）
+      const ordersParams = {
+        status: 'any',
+        financial_status: 'paid',
+        limit: 100,
+        created_at_min: lastMonthStart.toISOString(),
+        created_at_max: lastMonthEnd.toISOString(),
+        fields: 'id,created_at,total_price,line_items,financial_status,currency'
+      };
+      
+      const ordersData = await this.makeShopifyRequest('/orders.json', ordersParams);
+      const orders = ordersData.orders || [];
+      
+      // 売上集計
+      const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_price || 0), 0);
+      
+      // 商品別売上集計
+      const productSales = {};
+      orders.forEach(order => {
+        order.line_items?.forEach(item => {
+          const productName = item.name || 'Unknown Product';
+          const productId = item.product_id;
+          const itemRevenue = parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+          const quantity = parseInt(item.quantity || 0);
+          
+          if (!productSales[productName]) {
+            productSales[productName] = {
+              product_id: productId,
+              revenue: 0,
+              quantity: 0,
+              orders: 0
+            };
+          }
+          
+          productSales[productName].revenue += itemRevenue;
+          productSales[productName].quantity += quantity;
+          productSales[productName].orders += 1;
+        });
+      });
+      
+      // 売れた商品ランキング（売上順）
+      const topProducts = Object.entries(productSales)
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 10)
+        .map(([name, data], index) => ({
+          rank: index + 1,
+          product_name: name,
+          product_id: data.product_id,
+          total_revenue: Math.round(data.revenue),
+          total_quantity: data.quantity,
+          order_count: data.orders,
+          average_price: data.quantity > 0 ? Math.round(data.revenue / data.quantity) : 0
+        }));
+      
+      // 日別売上推移
+      const dailySales = {};
+      orders.forEach(order => {
+        const date = new Date(order.created_at).toLocaleDateString();
+        if (!dailySales[date]) {
+          dailySales[date] = { revenue: 0, orders: 0 };
+        }
+        dailySales[date].revenue += parseFloat(order.total_price || 0);
+        dailySales[date].orders += 1;
+      });
+      
+      const salesTrend = Object.entries(dailySales)
+        .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+        .map(([date, data]) => ({
+          date,
+          revenue: Math.round(data.revenue),
+          orders: data.orders
+        }));
+      
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'get_last_month_sales_and_products',
+            period: {
+              start: lastMonthStart.toLocaleDateString(),
+              end: lastMonthEnd.toLocaleDateString(),
+              month_name: lastMonthStart.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
+            },
+            summary: {
+              total_orders: orders.length,
+              total_revenue: Math.round(totalRevenue),
+              average_order_value: orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0,
+              currency: orders[0]?.currency || 'JPY',
+              top_selling_product: topProducts[0]?.product_name || 'データなし'
+            },
+            top_products: topProducts,
+            daily_sales_trend: salesTrend,
+            analysis: {
+              best_selling_day: salesTrend.reduce((max, day) => day.revenue > max.revenue ? day : max, { revenue: 0, date: 'なし' }),
+              product_diversity: Object.keys(productSales).length,
+              average_daily_revenue: salesTrend.length > 0 ? Math.round(totalRevenue / salesTrend.length) : 0
+            },
+            timestamp: new Date().toISOString()
+          }, null, 2)
+        }]
+      };
+      
+    } catch (error) {
+      return this.handleError('get_last_month_sales_and_products', error);
+    }
+  }
+
   // 利用可能ツール一覧
   getAvailableTools() {
     return [
+      {
+        name: "get_last_month_sales_and_products",
+        description: "先月の売上実績と売れた商品情報を一括取得・分析します",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          description: "パラメータ不要。先月の期間を自動計算して売上と商品分析を実行"
+        }
+      },
       {
         name: "get_orders",
         description: "指定期間のShopify注文データを取得します",
@@ -1095,6 +1252,8 @@ class TrueShopifyMCPServer {
   // ツール呼び出しハンドラー
   async handleToolCall(toolName, params) {
     switch (toolName) {
+      case 'get_last_month_sales_and_products':
+        return await this.getLastMonthSalesAndProducts(params);
       case 'get_orders':
         return await this.getOrders(params);
       case 'get_products':

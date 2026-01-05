@@ -7,11 +7,12 @@ import LiveMomentToast, { LiveMomentData } from "./LiveMomentToast";
 export default function LiveMomentListener() {
     const [moment, setMoment] = useState<LiveMomentData | null>(null);
 
-    // Initialize Supabase Client
-    const supabase = createBrowserClient(
+    // Initialize Supabase Client (Stable outside effect if possible, or memoized)
+    // For simplicity and stability in App Router, we can initialize it once
+    const [supabase] = useState(() => createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    ));
 
     useEffect(() => {
         // Subscribe to INSERT events on 'live_moments' table

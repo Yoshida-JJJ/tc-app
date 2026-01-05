@@ -1,0 +1,57 @@
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAdmin = createClient(supabaseUrl!, supabaseKey!);
+
+async function recover() {
+    const orderId = '22ffcc3d-92b3-409a-9455-02d688d801c5';
+    const buyerId = '868187c0-f34f-47c7-9449-bc829a212cff';
+    const listingId = 'fd35a791-acad-43e9-896b-26ac6fde589b';
+
+    console.log('--- Starting Manual Recovery for 39k Sasaki ---');
+
+    const { data: listing } = await supabaseAdmin.from('listing_items').select('*').eq('id', listingId).single();
+    if (!listing) return;
+
+    const { data: recovered, error } = await supabaseAdmin
+        .from('listing_items')
+        .insert({
+            player_name: listing.player_name,
+            team: listing.team,
+            year: listing.year,
+            manufacturer: listing.manufacturer,
+            series_name: listing.series_name,
+            card_number: listing.card_number,
+            images: listing.images,
+            condition_grading: listing.condition_grading,
+            condition_rating: listing.condition_rating,
+            variation: listing.variation,
+            serial_number: listing.serial_number,
+            is_rookie: listing.is_rookie,
+            is_autograph: listing.is_autograph,
+            description: listing.description,
+            is_live_moment: listing.is_live_moment,
+            
+            seller_id: buyerId,
+            status: 'Draft', // Order is completed
+            price: 0,
+            origin_order_id: orderId,
+            moment_history: listing.moment_history || []
+        })
+        .select('*')
+        .single();
+    
+    if (error) {
+        console.error('Manual Recovery Failed:', error);
+    } else {
+        console.log('Manual Recovery Success:', recovered);
+    }
+}
+
+recover();

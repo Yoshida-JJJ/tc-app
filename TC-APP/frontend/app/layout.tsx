@@ -5,6 +5,7 @@ import Link from "next/link";
 // import { Providers } from "./providers";
 import Header from "../components/Header";
 import LiveMomentListener from "../components/LiveMomentListener";
+import DevTools from "../components/DevTools";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -32,6 +33,7 @@ export default function RootLayout({
         {/* <Providers> */}
         <Header />
         <LiveMomentListener />
+        <DevTools />
         <main>{children}</main>
         {/* </Providers> */}
       </body>

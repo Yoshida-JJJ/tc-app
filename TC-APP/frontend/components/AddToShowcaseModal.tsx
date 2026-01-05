@@ -335,6 +335,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                     certification_number: formData.isGraded ? formData.certificationNumber : null
                 },
                 condition_rating: !formData.isGraded ? formData.condition : null,
+                deleted_at: null, // Clear archived status if edited/added
             };
 
             if (mode === 'edit' && initialData?.id) {

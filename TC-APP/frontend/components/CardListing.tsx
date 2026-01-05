@@ -1,50 +1,73 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect, memo } from 'react';
 import { motion } from 'framer-motion';
 import { ListingItem } from '../types';
+import MomentHistoryBadge from './MomentHistoryBadge';
+
+interface LiveMomentInfo {
+    id: string;
+    title: string;
+    endTime: number;
+}
 
 interface ListingItemProps {
     item: ListingItem;
     isLiveMoment?: boolean; // Debug/Live prop
-    liveMomentEndTime?: number | null;
+    liveMoments?: LiveMomentInfo[];
 }
 
-export default function CardListing({ item, isLiveMoment = false, liveMomentEndTime }: ListingItemProps) {
+const EMPTY_LIVE_MOMENTS: LiveMomentInfo[] = [];
+
+const CardListing = memo(({ item, isLiveMoment = false, liveMoments = EMPTY_LIVE_MOMENTS }: ListingItemProps) => {
     const isSold = item.status !== 'Active';
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
 
-    // Countdown Logic
-    // Countdown & Active State Logic
-    const [timeLeft, setTimeLeft] = useState<string>('60:00');
-    const [isLiveActive, setIsLiveActive] = useState(isLiveMoment);
+    // Multiple Countdown Logic
+    const [momentsWithTime, setMomentsWithTime] = useState<(LiveMomentInfo & { timeLeft: string })[]>([]);
+    // Initialize with correct value to avoid immediate useEffect setState
+    const [isLiveActive, setIsLiveActive] = useState(isLiveMoment || liveMoments.length > 0);
 
     useEffect(() => {
-        setIsLiveActive(isLiveMoment); // Sync with prop
-        if (isLiveMoment) {
-            const endTime = liveMomentEndTime || (new Date().getTime() + 60 * 60 * 1000);
+        // BAIL if nothing to track
+        if (!isLiveMoment && liveMoments.length === 0) {
+            setIsLiveActive(prev => prev !== false ? false : prev);
+            setMomentsWithTime(prev => prev.length !== 0 ? [] : prev);
+            return;
+        }
 
-            const updateTimer = () => {
-                const now = new Date().getTime();
-                const distance = endTime - now;
+        const updateTimers = () => {
+            const now = new Date().getTime();
+            let anyActive = false;
+
+            const updatedMoments = liveMoments.map((m: LiveMomentInfo) => {
+                const distance = m.endTime - now;
+                let timeLeft = '00:00';
                 if (distance > 0) {
+                    anyActive = true;
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-                } else {
-                    setTimeLeft('00:00');
-                    setIsLiveActive(false); // Auto-expire visual effects
+                    timeLeft = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 }
-            };
+                return { ...m, timeLeft };
+            });
 
-            updateTimer(); // Immediate update
-            const timer = setInterval(updateTimer, 1000);
-            return () => clearInterval(timer);
-        } else {
-            setIsLiveActive(false);
-        }
-    }, [isLiveMoment, item.player_name, liveMomentEndTime]);
+            // Deep comparison to avoid redundant renders
+            setMomentsWithTime(prev => {
+                const isSame = prev.length === updatedMoments.length &&
+                    prev.every((p, i) => p.timeLeft === updatedMoments[i].timeLeft && p.id === updatedMoments[i].id);
+                return isSame ? prev : updatedMoments;
+            });
+
+            const nextLiveActive = isLiveMoment || anyActive;
+            setIsLiveActive(prev => prev !== nextLiveActive ? nextLiveActive : prev);
+        };
+
+        updateTimers();
+        const timer = setInterval(updateTimers, 1000);
+        return () => clearInterval(timer);
+    }, [isLiveMoment, liveMoments]);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -139,10 +162,24 @@ export default function CardListing({ item, isLiveMoment = false, liveMomentEndT
                 {/* Badges */}
                 <div className="absolute top-3 right-3 flex flex-col gap-2 items-end z-20 [backface-visibility:hidden]">
                     {isLiveActive && (
-                        <div className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold tracking-wider rounded shadow-lg shadow-red-600/40 border border-white/20 flex items-center gap-1.5 animate-pulse">
-                            <span className="text-sm">🔥</span>
-                            LIVE
-                            <span className="ml-1 pl-1 border-l border-white/20 font-mono">{timeLeft}</span>
+                        <div className="flex flex-col gap-1.5 items-end">
+                            {/* Priority Header for Debug/Global Live */}
+                            {isLiveMoment && momentsWithTime.length === 0 && (
+                                <div className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold tracking-wider rounded shadow-lg shadow-red-600/40 border border-white/20 flex items-center gap-1.5 animate-pulse">
+                                    <span className="text-sm">🔥</span>
+                                    LIVE
+                                    <span className="ml-1 pl-1 border-l border-white/20 font-mono">60:00</span>
+                                </div>
+                            )}
+
+                            {/* Individual Moment Countdowns */}
+                            {momentsWithTime.map((m) => (
+                                <div key={m.id} className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold tracking-wider rounded shadow-lg shadow-red-600/40 border border-white/20 flex items-center gap-1.5 animate-pulse">
+                                    <span className="text-sm">🔥</span>
+                                    {m.title || 'LIVE'}
+                                    <span className="ml-1 pl-1 border-l border-white/20 font-mono">{m.timeLeft}</span>
+                                </div>
+                            ))}
                         </div>
                     )}
                     <span className="bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-white/10">
@@ -163,6 +200,7 @@ export default function CardListing({ item, isLiveMoment = false, liveMomentEndT
                         <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-brand-blue/20 text-brand-blue border border-brand-blue/30">
                             {item.team}
                         </span>
+                        <MomentHistoryBadge history={item.moment_history} />
 
                     </div>
 
@@ -217,4 +255,6 @@ export default function CardListing({ item, isLiveMoment = false, liveMomentEndT
             {cardContent}
         </Link>
     );
-}
+});
+
+export default CardListing;

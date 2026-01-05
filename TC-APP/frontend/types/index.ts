@@ -84,6 +84,22 @@ export interface ListingItem {
     condition_rating?: string | null;
 
     // catalog: CardCatalog | null; // Removed
-    seller: Profile;
+    seller?: Profile; // Can be joined
     is_live_moment?: boolean;
+    live_moments?: any[];
+    moment_history?: MomentHistoryItem[];
+    orders?: any[] | any; // Joined via Supabase
+    origin_order?: any; // Joined via Supabase
+}
+
+export interface MomentHistoryItem {
+    moment_id: string;
+    timestamp: string;
+    title: string;
+    player_name: string;
+    intensity: number;
+    description?: string;
+    match_result?: string;
+    owner_at_time?: string;
+    status?: 'pending' | 'finalized';
 }

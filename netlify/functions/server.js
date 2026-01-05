@@ -78,6 +78,9 @@ async function callShopifyTool(toolName, params) {
       case 'get_shopify_products':
         return await getShopifyProducts(maxResults);
       
+      case 'get_last_month_sales_and_products':
+        return await getLastMonthSalesAndProducts();
+      
       default:
         throw new Error(`未知のShopifyツール: ${toolName}`);
     }
@@ -250,6 +253,128 @@ async function getShopifyProducts(limit = 20) {
           vendor: product.vendor,
           status: product.status
         })),
+        timestamp: new Date().toISOString()
+      }, null, 2)
+    }]
+  };
+}
+
+// 先月の売上と商品情報を直接取得（MCPサーバー代替）
+async function getLastMonthSalesAndProducts() {
+  console.log('📅 先月の売上と商品分析開始（直接API）...');
+  
+  // 先月の期間を計算
+  const today = new Date();
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  
+  const startDate = lastMonthStart.toISOString().split('T')[0];
+  const endDate = lastMonthEnd.toISOString().split('T')[0];
+  
+  console.log(`📊 分析期間: ${startDate} - ${endDate}`);
+  
+  const response = await axios.get(
+    `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2024-01/orders.json`,
+    {
+      headers: {
+        'X-Shopify-Access-Token': process.env.SHOPIFY_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      params: {
+        limit: 100,
+        status: 'any',
+        financial_status: 'paid',
+        created_at_min: lastMonthStart.toISOString(),
+        created_at_max: lastMonthEnd.toISOString(),
+        fields: 'id,created_at,total_price,line_items,financial_status,currency'
+      },
+      timeout: 12000
+    }
+  );
+
+  const orders = response.data.orders || [];
+  const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_price || 0), 0);
+  
+  // 商品別売上集計
+  const productSales = {};
+  orders.forEach(order => {
+    order.line_items?.forEach(item => {
+      const productName = item.name || 'Unknown Product';
+      const productId = item.product_id;
+      const itemRevenue = parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+      const quantity = parseInt(item.quantity || 0);
+      
+      if (!productSales[productName]) {
+        productSales[productName] = {
+          product_id: productId,
+          revenue: 0,
+          quantity: 0,
+          orders: 0
+        };
+      }
+      
+      productSales[productName].revenue += itemRevenue;
+      productSales[productName].quantity += quantity;
+      productSales[productName].orders += 1;
+    });
+  });
+  
+  // 売れた商品ランキング（売上順）
+  const topProducts = Object.entries(productSales)
+    .sort((a, b) => b[1].revenue - a[1].revenue)
+    .slice(0, 10)
+    .map(([name, data], index) => ({
+      rank: index + 1,
+      product_name: name,
+      total_revenue: Math.round(data.revenue),
+      total_quantity: data.quantity,
+      order_count: data.orders,
+      average_price: data.quantity > 0 ? Math.round(data.revenue / data.quantity) : 0
+    }));
+
+  // 日別売上推移
+  const dailySales = {};
+  orders.forEach(order => {
+    const date = new Date(order.created_at).toLocaleDateString();
+    if (!dailySales[date]) {
+      dailySales[date] = { revenue: 0, orders: 0 };
+    }
+    dailySales[date].revenue += parseFloat(order.total_price || 0);
+    dailySales[date].orders += 1;
+  });
+  
+  const salesTrend = Object.entries(dailySales)
+    .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+    .map(([date, data]) => ({
+      date,
+      revenue: Math.round(data.revenue),
+      orders: data.orders
+    }));
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        tool: 'get_last_month_sales_and_products',
+        period: {
+          start: startDate,
+          end: endDate,
+          month_name: lastMonthStart.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
+        },
+        summary: {
+          total_orders: orders.length,
+          total_revenue: Math.round(totalRevenue),
+          average_order_value: orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0,
+          currency: orders[0]?.currency || 'JPY',
+          top_selling_product: topProducts[0]?.product_name || 'データなし'
+        },
+        top_products: topProducts,
+        daily_sales_trend: salesTrend,
+        analysis: {
+          best_selling_day: salesTrend.reduce((max, day) => day.revenue > max.revenue ? day : max, { revenue: 0, date: 'なし' }),
+          product_diversity: Object.keys(productSales).length,
+          average_daily_revenue: salesTrend.length > 0 ? Math.round(totalRevenue / salesTrend.length) : 0
+        },
         timestamp: new Date().toISOString()
       }, null, 2)
     }]
@@ -2055,6 +2180,53 @@ app.post('/api/chat/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
+    
+    // 早期検出：先月の売上クエリに対する直接Shopify API呼び出し
+    if (message && message.includes('先月') && (message.includes('売上') || message.includes('商品'))) {
+      console.log(`📅 [${sessionId}] 先月売上クエリを検出 - 直接Shopify API呼び出し`);
+      
+      try {
+        const session = getOrCreateSession(sessionId);
+        session.lastActivity = new Date();
+        
+        session.history.push({
+          role: 'user',
+          content: message,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 直接Shopify APIでデータ取得
+        const shopifyResult = await getLastMonthSalesAndProducts();
+        const data = JSON.parse(shopifyResult.content[0].text);
+        
+        // AI エージェントでレポート生成
+        if (aiAgent) {
+          const report = await aiAgent.generateReport(message, { shopify_last_month: shopifyResult }, {
+            period: data.period,
+            dataSource: 'shopify_direct_api'
+          });
+          
+          session.history.push({
+            role: 'assistant',
+            content: report,
+            timestamp: new Date().toISOString()
+          });
+          
+          clearTimeout(timeoutId);
+          return res.json({
+            success: true,
+            sessionId,
+            response: report,
+            dataSource: 'shopify_direct_api',
+            processingTime: new Date().toISOString()
+          });
+        }
+        
+      } catch (shopifyError) {
+        console.error(`❌ [${sessionId}] 先月Shopifyデータ取得エラー:`, shopifyError.message);
+        // エラーの場合は通常処理に続行
+      }
+    }
     
     // 早期検出：Shopify 3ヶ月クエリに対する即時応答
     if (message && message.includes('shopify') && (message.includes('3ヶ月') || message.includes('3か月') || message.includes('売上実績'))) {

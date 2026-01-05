@@ -36,7 +36,7 @@ export async function markAsShipped(orderId: string, trackingNumber?: string, ca
             id,
             buyer_id,
             status,
-            listing:listing_items (
+            listing:listing_items!listing_id (
                 id, seller_id, series_name, player_name
             )
         `)
@@ -112,7 +112,7 @@ export async function markAsReceived(orderId: string) {
             buyer_id,
             listing_id,
             status,
-            listing:listing_items (
+            listing:listing_items!listing_id (
                 id, seller_id, series_name, player_name
             )
         `)
@@ -139,6 +139,25 @@ export async function markAsReceived(orderId: string) {
         completed_at: new Date().toISOString()
     }).eq('id', orderId);
 
+    // --- Unlock Item for Buyer's Workspace ---
+    try {
+        const { getBuyerItemByOrder } = await import('./item');
+        const buyerItemData = await getBuyerItemByOrder(orderId);
+        if (buyerItemData?.id) {
+            console.log(`[markAsReceived] Unlocking item ${buyerItemData.id} for buyer.`);
+            await supabaseAdmin
+                .from('listing_items')
+                .update({
+                    status: 'Draft',
+                    origin_order_id: orderId // Ensure link is set even if webhook failed
+                })
+                .eq('id', buyerItemData.id)
+                .in('status', ['Incoming', 'AwaitingShipment', 'Active']); // Added 'Active' safety net
+        }
+    } catch (unlockErr) {
+        console.error('[markAsReceived] Failed to unlock item:', unlockErr);
+    }
+
     // Prepare Listing Detail safe access
     const listingDetail = Array.isArray(order.listing) ? order.listing[0] : order.listing;
 
@@ -149,38 +168,7 @@ export async function markAsReceived(orderId: string) {
         if (sellerUser && sellerUser.user && sellerUser.user.email) {
             const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-            // 4. Auto-Clone Item for Buyer (as Draft)
-            const { data: originalItem } = await supabaseAdmin
-                .from('listing_items')
-                .select('*')
-                .eq('id', order.listing_id)
-                .single();
-
-            if (originalItem) {
-                const { error: cloneError } = await supabaseAdmin
-                    .from('listing_items')
-                    .insert({
-                        seller_id: user.id, // The Buyer becomes the new Seller
-                        status: 'Draft',
-                        player_name: originalItem.player_name,
-                        team: originalItem.team,
-                        year: originalItem.year,
-                        manufacturer: originalItem.manufacturer,
-                        series_name: originalItem.series_name,
-                        card_number: originalItem.card_number,
-                        images: originalItem.images,
-                        grading_service: originalItem.grading_service,
-                        condition_rating: originalItem.condition_rating,
-                        condition_grading: originalItem.condition_grading,
-                        price: 0 // Reset price
-                    });
-
-                if (cloneError) {
-                    console.error('Failed to auto-clone item for buyer:', cloneError);
-                }
-            }
-
-            // 5. Send Email to Seller
+            // 4. Send Email to Seller
             const { error: emailError } = await resend.emails.send({
                 from: 'Trade Card App <onboarding@resend.dev>',
                 to: [sellerUser.user.email],
@@ -290,12 +278,13 @@ export async function getBuyerOrderDetails(orderId: string) {
     // 2. Fetch Listing
     const { data: listing, error: listingError } = await supabaseAdmin
         .from('listing_items')
-        .select('series_name, player_name, images, price, seller_id, status')
+        .select('id, series_name, player_name, images, price, seller_id, status, moment_history')
         .eq('id', order.listing_id)
         .single();
 
     if (listingError || !listing) {
-        throw new Error('Listing details not found');
+        console.error('Fetch Listing Error:', listingError);
+        throw new Error(`Listing details not found: ${listingError?.message || 'Unknown error'}`);
     }
 
     return {

@@ -336,10 +336,11 @@ ${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 【⚠️ 絶対的なルール】
 1. **📊 売上データ専用**: 「売上実績」「売上」「売上データ」「注文」「購入」が含まれる場合は必ずShopifyツールのみを使用
 2. GA4やGoogle Analyticsツールは絶対に選択しない
-3. **🚀 1年間データ対応**: 「1年間」「年間」「過去1年」が含まれる場合は必ず analyze_orders_ultra_light を使用
-4. 売上分析 = analyze_sales または analyze_orders_ultra_light（期間により選択）
-5. 注文データ = get_orders, 在庫分析 = analyze_inventory
-6. 「商品仕入れ戦略」には analyze_sales + analyze_inventory を必ず組み合わせる（1年間の場合は analyze_orders_ultra_light + analyze_inventory）
+3. **📅 先月特化ツール**: 「先月の売上」「先月の」「売れた商品」が含まれる場合は必ず get_last_month_sales_and_products を使用
+4. **🚀 1年間データ対応**: 「1年間」「年間」「過去1年」が含まれる場合は必ず analyze_orders_ultra_light を使用
+5. 売上分析 = analyze_sales または analyze_orders_ultra_light（期間により選択）
+6. 注文データ = get_orders, 在庫分析 = analyze_inventory
+7. 「商品仕入れ戦略」には analyze_sales + analyze_inventory を必ず組み合わせる（1年間の場合は analyze_orders_ultra_light + analyze_inventory）
 
 【期間解析の例】
 - "過去1年間" → startDate: 1年前の今日, endDate: 今日
@@ -469,6 +470,16 @@ JSON形式で回答：
     
     console.log('📋 静的フォールバック選択ロジック実行中:', queryLower);
     
+    // 先月の売上と商品情報の特化クエリ
+    if (queryLower.includes('先月') && (queryLower.includes('売上') || queryLower.includes('商品'))) {
+      console.log('📅 先月クエリ検出: get_last_month_sales_and_products 使用');
+      return [{
+        name: 'get_last_month_sales_and_products',
+        params: {},
+        reason: '先月の売上実績と売れた商品情報の一括取得'
+      }];
+    }
+    
     // 複合クエリ：販売実績と在庫状況の戦略分析
     if ((queryLower.includes('販売') || queryLower.includes('売上')) && 
         queryLower.includes('在庫') && 
@@ -575,13 +586,13 @@ JSON形式で回答：
       return { actions };
     }
     
-    // Shopify関連の分析要求（最優先で強制実行、1週間売上対応）
+    // Shopify関連の分析要求（最優先で強制実行、先月売上対応）
     const hasShopifyRequest = queryText.includes('shopify') || queryText.includes('売上') || queryText.includes('注文') || 
                              queryText.includes('商品') || queryText.includes('ec') || queryText.includes('eコマース') || 
                              queryText.includes('購入') || queryText.includes('決済') || queryText.includes('オーダー') ||
                              queryText.includes('ランキング') || queryText.includes('仕入れ') || queryText.includes('戦略') ||
                              queryText.includes('1月から') || queryText.includes('今年') || queryText.includes('週間') ||
-                             queryText.includes('1週間') || queryText.includes('過去') ||
+                             queryText.includes('1週間') || queryText.includes('過去') || queryText.includes('先月') ||
                              responseText.includes('shopify') || responseText.includes('売上') || responseText.includes('注文');
     
     console.log('  🎯 Shopify検出:', hasShopifyRequest, 'クエリ:', queryText);

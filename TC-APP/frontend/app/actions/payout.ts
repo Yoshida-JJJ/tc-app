@@ -18,18 +18,17 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function getAvailableBalance(userId: string) {
     const supabase = await createClient();
 
-    // 1. Fetch Sold Items (Status: Completed)
-    // Note: In real app, we might check 'Shipped' or 'Delivered' too depending on payout policy.
-    // Assuming 'Completed' means fully settled.
-    const { data: soldItems, error: soldError } = await supabase
-        .from('listing_items')
-        .select('price')
+    // 1. Fetch Sold Items from Orders (Status: Completed)
+    // We use 'orders' because ownership of 'listing_items' transfers to the buyer upon completion.
+    const { data: soldOrders, error: soldError } = await supabase
+        .from('orders')
+        .select('total_amount')
         .eq('seller_id', userId)
-        .eq('status', 'Completed');
+        .eq('status', 'completed');
 
     if (soldError) throw new Error(soldError.message);
 
-    const totalSoldAmount = soldItems?.reduce((sum, item) => sum + (item.price || 0), 0) || 0;
+    const totalSoldAmount = soldOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
     const totalEarnings = Math.floor(totalSoldAmount * (1 - PLATFORM_FEE_PERCENTAGE));
 
     // 2. Fetch Payouts (All status except rejected)
@@ -187,8 +186,9 @@ export async function requestPayout(userId: string, netAmount: number) {
 
             const userName = profile?.name || 'Unknown User';
 
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
             await resend.emails.send({
-                from: 'Stadium Card <notifications@resend.dev>',
+                from: `Stadium Card <${fromEmail}>`,
                 to: adminEmails,
                 subject: 'New Payout Request',
                 react: PayoutRequestEmail({

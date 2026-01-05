@@ -148,7 +148,7 @@
         }
 
         .config-section {
-            padding: 20px 24px;
+            padding: 12px 24px;
             background: var(--card);
             border-bottom: 1px solid var(--border);
         }
@@ -156,25 +156,28 @@
         .config-row {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
+            max-width: 600px;
         }
 
         .config-row label {
             color: var(--foreground);
             font-weight: 600;
             font-size: 14px;
-            min-width: 80px;
+            min-width: 70px;
+            flex-shrink: 0;
         }
 
         .config-row input {
-            flex: 1;
-            padding: 12px 16px;
+            width: 200px;
+            padding: 8px 12px;
             background: var(--input);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             font-size: 14px;
             color: var(--foreground);
             transition: all 0.3s ease;
+            font-family: 'Monaco', 'Consolas', monospace;
         }
 
         .config-row input:focus {
@@ -191,31 +194,39 @@
         /* 設定セクションのモバイル対応 */
         @media (max-width: 768px) {
             .config-section {
-                padding: 12px;
+                padding: 8px 12px;
             }
             
             .config-row {
                 flex-direction: row;
                 align-items: center;
-                gap: 10px;
+                gap: 8px;
+                max-width: 100%;
             }
             
             .config-row label {
-                min-width: 60px;
+                min-width: 50px;
                 font-size: 12px;
                 flex-shrink: 0;
             }
             
             .config-row input {
-                padding: 10px 12px;
-                font-size: 16px; /* iOS zoom prevention - must be 16px or larger */
-                border-radius: 8px;
-                min-height: 44px; /* Apple recommended touch target size */
+                width: 140px;
+                padding: 6px 8px;
+                font-size: 16px;
+                border-radius: 6px;
+                min-height: 36px;
+            }
+            
+            .btn-auth {
+                padding: 6px 12px;
+                font-size: 12px;
+                min-height: 36px;
             }
         }
 
         .btn-auth {
-            padding: 12px 20px;
+            padding: 8px 16px;
             background: var(--primary);
             color: var(--primary-foreground);
             border: none;
@@ -225,9 +236,8 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .btn-auth::before {
@@ -958,6 +968,7 @@
                 <button class="example-btn" onclick="setQuestion('競合他社との比較ベンチマーク分析')">⚔️ 競合比較</button>
                 
                 <!-- Shopify売上分析 -->
+                <button class="example-btn" onclick="setQuestion('先月の売上、売れた商品情報をおしえて')">📅 先月の実績</button>
                 <button class="example-btn" onclick="setQuestion('過去1ヶ月のShopify売上実績を分析して')">💰 売上実績</button>
                 <button class="example-btn" onclick="setQuestion('Shopify注文データと人気商品ランキング')">📦 商品分析</button>
                 <button class="example-btn" onclick="setQuestion('GA4とShopify売上の統合分析をして')">🔗 統合分析</button>

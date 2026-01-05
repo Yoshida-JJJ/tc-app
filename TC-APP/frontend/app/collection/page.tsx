@@ -9,24 +9,10 @@ import AddToShowcaseModal from '../../components/AddToShowcaseModal';
 import ShowcaseCard from '../../components/ShowcaseCard';
 import PurchaseAnimation from '../../components/PurchaseAnimation';
 import SkeletonCard from '../../components/SkeletonCard';
+import { deleteItem, restoreItem } from '../actions/item';
 
 // Types
-interface ListingItem {
-    id: string;
-
-    price: number;
-    images: string[];
-    status: string;
-    is_live_moment?: boolean; // Added flag
-
-    // Decoupled fields
-    player_name?: string | null;
-    team?: string | null;
-    year?: number | null;
-    manufacturer?: string | null;
-    series_name?: string | null;
-    card_number?: string | null;
-}
+import { ListingItem } from '../../types';
 
 interface OrderItem {
     id: string;
@@ -35,6 +21,8 @@ interface OrderItem {
     total_amount: number;
     tracking_number?: string;
     listing?: ListingItem;
+    created_at: string;
+    completed_at?: string;
 }
 
 function MyPageContent() {
@@ -43,10 +31,11 @@ function MyPageContent() {
     const searchParams = useSearchParams();
     const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
 
-    const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'history'>('showcase');
+    const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'history' | 'archive'>('showcase');
     const [historyTab, setHistoryTab] = useState<'sold' | 'purchased'>('sold');
-    const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display' | 'Purchased'>('All');
+    const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display'>('All');
     const [showcaseItems, setShowcaseItems] = useState<any[]>([]);
+    const [archivedItems, setArchivedItems] = useState<any[]>([]);
     const [myListings, setMyListings] = useState<ListingItem[]>([]);
     const [myOrders, setMyOrders] = useState<OrderItem[]>([]);
     const [historySold, setHistorySold] = useState<ListingItem[]>([]);
@@ -61,7 +50,9 @@ function MyPageContent() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
+            console.log('[Collection] No user found, redirecting to login');
             router.push('/login');
+            setLoading(false);
             return;
         }
         setUser(user);
@@ -70,44 +61,173 @@ function MyPageContent() {
             // Fetch All My Items (Listings + Collection)
             const { data: listingsData } = await supabase
                 .from('listing_items')
-                .select('*, orders(*)')
+                .select('*, orders:orders!listing_id(*), origin_order:orders!origin_order_id(id, status, moment_snapshot)') // Left Join (Removed !)
                 .eq('seller_id', user.id);
 
-            // Selling Tab: Active Transactions only
-            const activeMyListings = listingsData?.filter(item =>
-                ['TransactionPending', 'AwaitingShipment', 'Shipped', 'Delivered'].includes(item.status)
-            ) || [];
+            const activeItemsRaw = listingsData?.filter(i => !i.deleted_at) || [];
+            const archivedItemsRaw = listingsData?.filter(i => !!i.deleted_at) || [];
+
+            // Fetch Active Live Moments to tag items
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+            const { data: recentMoments } = await supabase
+                .from('live_moments')
+                .select('*')
+                .gt('created_at', oneHourAgo);
+
+            const livePlayerNames = new Set(recentMoments?.map(m => (m.player_name || '').toLowerCase()) || []);
+
+            const tagWithLive = (item: any) => {
+                if (!item) return null;
+
+                // Live Moments enabled for ALL items (as per user request to boost selling intent)
+                // Originally restricted to Active, now globally enabled for "Opportunity" notification.
+
+                const playerName = (item.player_name || '').toLowerCase();
+                const matchedMoments = recentMoments?.filter(m => {
+                    const mName = (m.player_name || '').toLowerCase();
+                    return playerName.includes(mName) || mName.includes(playerName);
+                }) || [];
+
+                return {
+                    ...item,
+                    is_live_moment: matchedMoments.length > 0,
+                    live_moments: matchedMoments, // Full array for multi-badge
+                    moment_created_at: matchedMoments[0]?.created_at || null // For legacy single-badge if needed
+                };
+            };
+
+            // Helper for merging moments from order snapshots into item history
+            const mergeOrderMoments = (item: any, orderData: any) => {
+                if (!item || !orderData || !orderData.moment_snapshot) return item;
+
+                const snapshots = Array.isArray(orderData.moment_snapshot) ? orderData.moment_snapshot : [orderData.moment_snapshot];
+                const history = Array.isArray(item.moment_history) ? item.moment_history : [];
+
+                const missingSnapshots = snapshots.filter((sn: any) =>
+                    !history.some((h: any) => (h.moment_id === sn.id) || (h.id === sn.id))
+                );
+
+                if (missingSnapshots.length > 0) {
+                    item.moment_history = [
+                        ...history,
+                        ...missingSnapshots.map((sn: any) => ({
+                            moment_id: sn.id,
+                            timestamp: sn.created_at || new Date().toISOString(),
+                            title: sn.title,
+                            player_name: sn.player_name,
+                            intensity: sn.intensity,
+                            description: sn.description,
+                            match_result: sn.match_result,
+                            owner_at_time: orderData.id,
+                            status: 'finalized'
+                        }))
+                    ];
+                }
+                return item;
+            };
+
+            // Selling Tab: Active Transactions (Persistent Model: Query from orders)
+            const { data: pendingSalesData } = await supabase
+                .from('orders')
+                .select('*, listing:listing_items!listing_id(*)')
+                .eq('seller_id', user.id)
+                .is('completed_at', null);
+
+            console.log('[Collection] Pending Sales:', pendingSalesData?.length || 0);
+
+            const activeMyListings = (pendingSalesData || []).map(order => ({
+                ...order.listing,
+                orders: order // Pass order for Manage link
+            })).map(tagWithLive).filter(item => item !== null);
             setMyListings(activeMyListings as any);
 
-            // History: Sold Items
-            const soldHistory = listingsData?.filter(item =>
-                item.status === 'Completed'
-            ) || [];
+            // History: Sold Items (Persistent Model: Query from orders)
+            const { data: soldOrdersData } = await supabase
+                .from('orders')
+                .select('*, listing:listing_items!listing_id(*)') // Get the listing details at time of fetch
+                .eq('seller_id', user.id)
+                .is('completed_at', null); // Initial check for pending sales? No, history usually means completed.
+
+            // Actually, History > Sold should probably show Completed orders.
+            const { data: completedSoldData } = await supabase
+                .from('orders')
+                .select('*, listing:listing_items!listing_id(*)') // Disambiguate join
+                .eq('seller_id', user.id)
+                .not('completed_at', 'is', null);
+
+            const soldHistory = (completedSoldData || []).map(order => ({
+                ...order.listing,
+                orders: order, // For formatDate(item.orders.completed_at)
+                type: 'sold'
+            })).map(tagWithLive);
             setHistorySold(soldHistory as any);
 
             // Buying Tab: Active Transactions only
             const { data: ordersData } = await supabase
                 .from('orders')
-                .select('*, listing:listing_items(*)')
+                .select('*, listing:listing_items!listing_id(*)') // Disambiguate join
                 .eq('buyer_id', user.id);
 
-            const activeMyOrders = ordersData?.filter(order =>
-                ['TransactionPending', 'AwaitingShipment', 'Shipped', 'Delivered'].includes(order.listing?.status || '')
-            ) || [];
+            const activeMyOrders = (ordersData?.filter(order => {
+                const orderStatus = (order.status || '').toLowerCase();
+                // ONLY show orders that are actually in progress for THIS purchase
+                return ['pending', 'paid', 'awaiting_shipping', 'shipped', 'delivered'].includes(orderStatus);
+            }) || []).map(order => {
+                const listing = order.listing ? mergeOrderMoments(order.listing, order) : null;
+                return {
+                    ...order,
+                    listing: listing ? tagWithLive(listing) : null
+                };
+            }).filter(o => o.listing !== null); // safety
             setMyOrders(activeMyOrders as any || []);
 
             // History: Purchased Items
-            const purchasedHistory = ordersData?.filter(order =>
-                order.listing?.status === 'Completed'
-            ) || [];
+            const purchasedHistory = (ordersData?.filter(order =>
+                (order.status || '').toLowerCase() === 'completed'
+            ) || []).map(order => {
+                const listing = order.listing ? mergeOrderMoments(order.listing, order) : null;
+                return {
+                    ...order,
+                    listing: listing ? tagWithLive(listing) : null
+                };
+            });
             setHistoryPurchased(purchasedHistory as any);
 
             // Workspace Tab: Aggregated View
-            const workspaceListings = listingsData?.filter(item =>
-                ['Active', 'Sold', 'Display', 'Shipped', 'Delivered', 'Draft'].includes(item.status)
-            ) || [];
+            const workspaceListings = (activeItemsRaw?.filter(item => {
+                // Mandatory Filter: Must be Active, Display, or Draft (or Completed as fallback)
+                const isCorrectStatus = ['Active', 'Display', 'Draft', 'Completed', 'completed'].includes(item.status);
 
-            // We no longer include Purchased orders here. They are auto-cloned as Drafts.
+                // Extra Protection: If it's a purchased clone (has origin_order_id), 
+                // it MUST have a completed order to show up in Workspace.
+                // If it's not a clone (origin_order_id is null), it's a seller's item, show normally.
+                const originOrder = Array.isArray(item.origin_order) ? item.origin_order[0] : item.origin_order;
+                const isTransactionComplete = !item.origin_order_id || (originOrder?.status === 'completed');
+
+                return isCorrectStatus && isTransactionComplete;
+            }) || []).map(item => {
+                // Self-Healing: Merge moment_snapshot from origin_order into history if missing
+                let originOrder = Array.isArray(item.origin_order) ? item.origin_order[0] : item.origin_order;
+
+                // Fallback: If origin_order is missing link, look for my purchase order in related orders
+                if (!originOrder && item.orders) {
+                    const relatedOrders = Array.isArray(item.orders) ? item.orders : [item.orders];
+                    const myPurchase = relatedOrders.find((o: any) =>
+                        o.buyer_id === user.id &&
+                        (o.status === 'completed' || o.status === 'shipped' || o.status === 'paid' || o.status === 'delivered')
+                    );
+                    if (myPurchase) {
+                        originOrder = myPurchase;
+                    }
+                }
+
+                return mergeOrderMoments(item, originOrder);
+            }).map(tagWithLive);
+
+            // Archive Tab
+            const archiveListings = (archivedItemsRaw || []).map(tagWithLive);
+            setArchivedItems(archiveListings);
+
             const aggregated = [
                 ...workspaceListings.map(item => ({ type: 'listed', ...item }))
             ];
@@ -120,39 +240,28 @@ function MyPageContent() {
         }
     };
 
-    const handleReceiveOrder = async (listingId: string) => {
-        if (!confirm('Have you received this item? This will complete the transaction.')) return;
 
-        const supabase = createClient();
+    const handleDeleteCollectionItem = async (id: string) => {
+        if (!confirm('Are you sure you want to archive this item? It will be moved to your history tab.')) return;
 
-        // Use RPC function to bypass RLS for buyer update
-        const { error } = await supabase.rpc('complete_order', {
-            p_listing_id: listingId
-        });
-
-        if (error) {
-            console.error('Failed to complete order:', error);
-            alert('Failed to complete order: ' + error.message);
-        } else {
-            // Trigger animation
-            setShowAnimation(true);
+        try {
+            await deleteItem(id);
+            fetchData();
+        } catch (error) {
+            console.error('Failed to archive item:', error);
+            alert('Failed to archive item');
         }
     };
 
-    const handleDeleteCollectionItem = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this item from your showcase?')) return;
+    const handleRestoreCollectionItem = async (id: string) => {
+        if (!confirm('Restore this item to your collection?')) return;
 
-        const supabase = createClient();
-        const { error } = await supabase
-            .from('listing_items')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Failed to delete item:', error);
-            alert('Failed to delete item');
-        } else {
+        try {
+            await restoreItem(id);
             fetchData();
+        } catch (error) {
+            console.error('Failed to restore item:', error);
+            alert('Failed to restore item');
         }
     };
 
@@ -166,7 +275,10 @@ function MyPageContent() {
 
         const { error } = await supabase
             .from('listing_items')
-            .update({ status: newStatus })
+            .update({
+                status: newStatus,
+                deleted_at: null // Restoration safety
+            })
             .eq('id', id);
 
         if (error) {
@@ -186,7 +298,10 @@ function MyPageContent() {
             // Mark listing as Draft (Soft Delete from Marketplace, but keeps in DB)
             const { error: updateError } = await supabase
                 .from('listing_items')
-                .update({ status: 'Draft' })
+                .update({
+                    status: 'Draft',
+                    deleted_at: null // Restoration safety 
+                })
                 .eq('id', id);
 
             if (updateError) throw updateError;
@@ -217,6 +332,12 @@ function MyPageContent() {
     };
 
 
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    };
 
     useEffect(() => {
         fetchData();
@@ -309,6 +430,15 @@ function MyPageContent() {
                             >
                                 History
                             </button>
+                            <button
+                                onClick={() => setActiveTab('archive')}
+                                className={`${activeTab === 'archive'
+                                    ? 'border-brand-blue text-brand-blue-glow'
+                                    : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
+                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
+                            >
+                                Archive
+                            </button>
                         </nav>
                     </div>
 
@@ -341,6 +471,8 @@ function MyPageContent() {
                                             onCancel={handleCancelListing}
                                             onToggleDisplay={handleToggleDisplay}
                                             is_live_moment={item.is_live_moment || isDebugLive}
+                                            live_moments={item.live_moments} // New prop
+                                            moment_created_at={item.moment_created_at}
                                         />
                                     ))}
                                     {filteredShowcaseItems.length === 0 && (
@@ -365,14 +497,24 @@ function MyPageContent() {
                                     </div>
                                 ) : (
                                     myListings.map(item => {
-                                        // Handle Supabase relation (Array vs Object)
+                                        // Handle Supabase relation (Array vs Object) and multiple orders
                                         // @ts-ignore
-                                        const order = item.orders ? (Array.isArray(item.orders) ? item.orders[0] : item.orders) : null;
+                                        const order = item.orders ? (
+                                            Array.isArray(item.orders)
+                                                ? (item.orders.find((o: any) => !['completed', 'cancelled'].includes((o.status || '').toLowerCase())) || item.orders[0])
+                                                : item.orders
+                                        ) : null;
 
                                         return (
                                             <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
                                                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
-                                                    <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                    {item.images?.[0] ? (
+                                                        <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">
+                                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start">
@@ -413,21 +555,27 @@ function MyPageContent() {
                                     myOrders.map(order => (
                                         <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
                                             <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
-                                                <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
+                                                {order.listing?.images?.[0] ? (
+                                                    <img src={order.listing.images[0]} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">
+                                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
                                                         <p className="text-brand-platinum/60 text-sm">
-                                                            {order.listing?.status === 'Shipped' ? 'Shipped - On the way' :
-                                                                order.listing?.status === 'Completed' ? 'Delivered & Completed' :
-                                                                    order.listing?.status === 'AwaitingShipment' ? 'Awaiting Shipment' :
-                                                                        order.listing?.status === 'TransactionPending' ? 'Transaction Pending' :
+                                                            {order.status === 'shipped' ? 'Shipped - On the way' :
+                                                                order.status === 'completed' ? 'Delivered & Completed' :
+                                                                    order.status === 'paid' || order.status === 'awaiting_shipping' ? 'Awaiting Shipment' :
+                                                                        order.status === 'pending' ? 'Transaction Pending' :
                                                                             'Purchased'}
                                                         </p>
                                                     </div>
-                                                    {order.listing?.status === 'Shipped' || order.listing?.status === 'Completed' || order.listing?.status === 'AwaitingShipment' || order.status === 'shipped' ? (
+                                                    {['paid', 'awaiting_shipping', 'shipped', 'delivered'].includes(order.status?.toLowerCase()) ? (
                                                         <Link
                                                             href={`/orders/buy/${order.id}`}
                                                             className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${order.status === 'shipped'
@@ -441,7 +589,7 @@ function MyPageContent() {
                                                         <span
                                                             className="px-3 py-1 text-xs font-bold text-brand-platinum/40 bg-brand-dark-light border border-brand-platinum/10 rounded-lg cursor-not-allowed"
                                                         >
-                                                            Pending
+                                                            Processing
                                                         </span>
                                                     )}
                                                 </div>
@@ -481,16 +629,32 @@ function MyPageContent() {
                                             historySold.map(item => (
                                                 <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
                                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
-                                                        <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                        {item.images?.[0] ? (
+                                                            <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">
+                                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex justify-between items-center">
                                                             <div>
                                                                 <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
-                                                                <p className="text-brand-platinum/60 text-sm">Sold - Completed</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <p className="text-brand-platinum/60 text-xs italic">Sold - Completed</p>
+                                                                    {/* @ts-ignore */}
+                                                                    {item.orders && (
+                                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-platinum/10 text-brand-platinum/40">
+                                                                            {/* @ts-ignore */}
+                                                                            {formatDate(Array.isArray(item.orders) ? item.orders[0]?.completed_at : item.orders?.completed_at)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <div className="text-brand-gold font-bold">
-                                                                ¥{item.price?.toLocaleString()}
+                                                                {/* @ts-ignore */}
+                                                                ¥{item.orders?.total_amount?.toLocaleString() || item.price?.toLocaleString()}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -512,10 +676,15 @@ function MyPageContent() {
                                                         <div className="flex justify-between items-center">
                                                             <div>
                                                                 <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
-                                                                <p className="text-brand-platinum/60 text-sm">Purchased - Completed</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <p className="text-brand-platinum/60 text-xs italic">Purchased - Completed</p>
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-platinum/10 text-brand-platinum/40">
+                                                                        {(order as any).completed_at ? formatDate((order as any).completed_at) : formatDate(order.created_at)}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                             <div className="text-brand-gold font-bold">
-                                                                ¥{order.listing?.price?.toLocaleString()}
+                                                                ¥{order.total_amount?.toLocaleString() || order.listing?.price?.toLocaleString()}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -526,8 +695,30 @@ function MyPageContent() {
                                 </div>
                             </div>
                         )}
-                    </div >
-                </div >
+                        {activeTab === 'archive' && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
+                                {archivedItems.map((item) => (
+                                    <ShowcaseCard
+                                        key={item.id}
+                                        item={item}
+                                        isArchived={true}
+                                        onRestore={handleRestoreCollectionItem}
+                                        onDelete={handleDeleteCollectionItem} // Optional: if physical delete ever needed
+                                        is_live_moment={item.is_live_moment || isDebugLive}
+                                        live_moments={item.live_moments} // New prop
+                                        moment_created_at={item.moment_created_at}
+                                    />
+                                ))}
+                                {archivedItems.length === 0 && (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-brand-platinum/50">
+                                        <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                        <p>Your archive is empty.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
                 <Footer />
                 <AddToShowcaseModal
                     isOpen={isModalOpen}

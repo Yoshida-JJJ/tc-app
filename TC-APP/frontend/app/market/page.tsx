@@ -121,26 +121,34 @@ function MarketPageContent() {
                 finalData = finalData.map((item: any) => {
                     const itemName = (item.player_name || '').toLowerCase();
 
-                    // Find actual matching moment
-                    const matchedMoment = momentsData.find((m: any) => {
+                    // Find all matching moments (Multiple Moments Support)
+                    const matchedMoments = momentsData.filter((m: any) => {
                         const p1 = (m.player_name || '').toLowerCase();
                         if (itemName.includes(p1)) return true;
                         if (p1.includes(itemName)) return true;
                         return false;
                     });
 
-                    let endTime = null;
-                    if (matchedMoment && matchedMoment.created_at) {
-                        const created = new Date(matchedMoment.created_at).getTime();
-                        if (!isNaN(created)) {
-                            endTime = created + 60 * 60 * 1000;
+                    // Store all end times as an array
+                    const liveMoments = matchedMoments.map((m: any) => {
+                        let endTime = null;
+                        if (m.created_at) {
+                            const created = new Date(m.created_at).getTime();
+                            if (!isNaN(created)) {
+                                endTime = created + 60 * 60 * 1000;
+                            }
                         }
-                    }
+                        return {
+                            id: m.id,
+                            title: m.title,
+                            endTime: endTime
+                        };
+                    }).filter(m => m.endTime !== null);
 
                     return {
                         ...item,
-                        is_live_moment: !!matchedMoment,
-                        live_moment_end_time: endTime
+                        is_live_moment: liveMoments.length > 0,
+                        live_moments: liveMoments
                     };
                 });
 
@@ -246,7 +254,7 @@ function MarketPageContent() {
                                         key={item.id}
                                         item={item}
                                         isLiveMoment={(item as any).is_live_moment || isDebugLive}
-                                        liveMomentEndTime={(item as any).live_moment_end_time}
+                                        liveMoments={(item as any).live_moments}
                                     />
                                 ))}
                             </div>

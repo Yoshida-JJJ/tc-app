@@ -37,8 +37,7 @@ function LoginForm() {
             if (error) {
                 setError(error.message);
             } else {
-                router.push('/');
-                router.refresh();
+                window.location.href = '/';
             }
         } catch (err) {
             setError('An unexpected error occurred');

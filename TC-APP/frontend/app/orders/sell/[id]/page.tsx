@@ -14,6 +14,7 @@ interface OrderDetail {
         images: string[];
         price: number;
     };
+    total_amount: number;
     created_at: string;
     shipping_address_snapshot: {
         name: string;
@@ -113,7 +114,37 @@ export default function SellerOrderPage({ params }: { params: Promise<{ id: stri
                     <div>
                         <h2 className="font-bold text-lg">{order.listing.player_name}</h2>
                         <p className="text-brand-platinum/60 text-sm">{order.listing.title}</p>
-                        <p className="text-brand-gold font-mono mt-1">¥{order.listing.price.toLocaleString()}</p>
+                        <p className="text-brand-gold font-mono mt-1">¥{(order.listing.price || 0).toLocaleString()}</p>
+                    </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="mb-8 p-6 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                    <h3 className="text-sm font-bold text-brand-platinum/60 uppercase tracking-widest mb-2 font-heading">会計明細 (Financial Summary)</h3>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-brand-platinum/60">注文日時 (Ordered At)</span>
+                            <span className="text-white font-mono">{new Date(order.created_at).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-brand-platinum/60">販売価格 (Sale Price)</span>
+                            <span className="text-white font-bold">¥{(order.total_amount || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-brand-platinum/60">販売手数料 (Platform Fee 10%)</span>
+                            <span className="text-red-400">-¥{Math.floor((order.total_amount || 0) * 0.1).toLocaleString()}</span>
+                        </div>
+                        <div className="pt-3 border-t border-white/10 flex justify-between items-center">
+                            <span className="text-brand-gold font-bold">振込予定金額 (Seller Net)</span>
+                            <span className="text-brand-gold text-xl font-bold font-heading">¥{Math.floor((order.total_amount || 0) * 0.9).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-brand-blue/10 border border-brand-blue/20 rounded-lg">
+                        <p className="text-xs text-brand-blue leading-relaxed">
+                            ※ <strong>配送料は出品者（販売者）負担</strong>となります。発送時に配送業者へお支払いください。
+                        </p>
                     </div>
                 </div>
 
