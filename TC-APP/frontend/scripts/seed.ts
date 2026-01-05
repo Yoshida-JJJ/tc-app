@@ -224,8 +224,9 @@ async function seed() {
             // Order Record
             if (item) {
                 await supabase.from('orders').insert({
-                    buyer_id: buyer1Id,
                     listing_id: original.id,
+                    buyer_id: buyer1Id,
+                    seller_id: sellerId, // Fix: Explicitly set seller_id
                     status: 'completed',
                     total_amount: 5000,
                     stripe_payment_intent_id: `pi_seed_${i}`,
