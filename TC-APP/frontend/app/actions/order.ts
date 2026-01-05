@@ -243,8 +243,15 @@ export async function getSellerOrderDetails(orderId: string) {
     }
 
     // Explicit Ownership Check
-    if (listing.seller_id !== user.id) {
-        throw new Error('Unauthorized: You are not the seller.');
+    console.log(`[Debug getSellerOrderDetails] Order: ${orderId}, User: ${user.id}, Seller: ${listing.seller_id}, OrderSeller: ${order.seller_id}`);
+
+    const isListingSeller = listing.seller_id === user.id;
+    const isOrderSeller = order.seller_id === user.id;
+
+    if (!isListingSeller && !isOrderSeller) {
+        const msg = `[Debug] Unauthorized: Seller ID mismatch in getSellerOrderDetails. UserID=${user.id}, ListingSellerID=${listing.seller_id}, OrderSellerID=${order.seller_id}`;
+        console.error(msg);
+        throw new Error(msg);
     }
 
     // Combine
