@@ -43,6 +43,7 @@ export async function markAsShipped(orderId: string, trackingNumber?: string, ca
         .select(`
             id,
             buyer_id,
+            seller_id,
             status,
             listing:listing_items!listing_id (
                 id, seller_id, series_name, player_name
@@ -56,10 +57,13 @@ export async function markAsShipped(orderId: string, trackingNumber?: string, ca
     // Verify Seller
     const listingDetail = Array.isArray(order.listing) ? order.listing[0] : order.listing;
 
-    console.log(`[Debug markAsShipped] Order: ${orderId}, User: ${user.id}, Seller: ${listingDetail?.seller_id}`);
+    console.log(`[Debug markAsShipped] Order: ${orderId}, User: ${user.id}, ListingSeller: ${listingDetail?.seller_id}, OrderSeller: ${order.seller_id}`);
 
-    if (listingDetail.seller_id !== user.id) {
-        const msg = `[Debug] Unauthorized: Seller ID mismatch. UserID=${user.id}, ListingSellerID=${listingDetail.seller_id}`;
+    const isListingSeller = listingDetail.seller_id === user.id;
+    const isOrderSeller = order.seller_id === user.id;
+
+    if (!isListingSeller && !isOrderSeller) {
+        const msg = `[Debug] Unauthorized: Seller ID mismatch. UserID=${user.id}, ListingSellerID=${listingDetail.seller_id}, OrderSellerID=${order.seller_id}`;
         console.error(msg);
         throw new Error(msg);
     }
