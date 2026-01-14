@@ -174,14 +174,20 @@ export default function ConceptPage() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         className="order-2 lg:order-1"
                     >
-                        <div className="grid grid-cols-2 gap-4">
-                            {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="aspect-square glass rounded-3xl border border-white/5 flex items-center justify-center">
-                                    <div className="w-12 h-12 rounded-full bg-neon-red/10 flex items-center justify-center">
-                                        <Sparkles className="text-neon-red" size={24} />
-                                    </div>
+                        <div className="relative aspect-square rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,0,0,0.2)]">
+                            <Image
+                                src="/images/defi_future.png"
+                                alt="Value Unleashed: DeFi & Social"
+                                fill
+                                className="object-cover"
+                            />
+                            {/* Overlay for depth */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <div className="absolute bottom-4 left-4 right-4">
+                                <div className="px-3 py-1 inline-block bg-black/60 backdrop-blur-md border border-white/10 rounded-lg">
+                                    <span className="text-[10px] font-bold text-neon-red tracking-widest uppercase">Concept Visual</span>
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     </motion.div>
 
