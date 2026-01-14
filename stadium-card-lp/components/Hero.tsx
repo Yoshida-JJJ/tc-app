@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Button } from "./Button";
 import Image from "next/image";
+// Trigger Vercel Deploy 2
 import Link from "next/link";
 
 export const Hero = () => {
